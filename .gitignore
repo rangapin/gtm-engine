@@ -1,10 +1,13 @@
 # Client working state — prospect PII, emails, scores, draft copy. Keep local.
-# Exception: critique.md and logs/critique.log.md ARE tracked, since they're
-# the cross-run eval signal and contain no PII (ratings + skill-edit ideas).
+# Exceptions (tracked, no PII):
+#   - critique.md: per-run eval signal (ratings + skill-edit ideas)
+#   - assumptions.md: one-line assumption statements from each skill-run
+#   - logs/critique.log.md: critique-skill log
 clients/*
 !clients/*/
 clients/*/*
 !clients/*/critique.md
+!clients/*/assumptions.md
 !clients/*/logs/
 clients/*/logs/*
 !clients/*/logs/critique.log.md

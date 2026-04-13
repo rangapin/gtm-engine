@@ -9,60 +9,58 @@ When the user runs `/campaign-run <domain>`:
 
 ## Overview
 
-This playbook chains all skills in sequence:
+This playbook chains all skills in sequence with **3 tiered gates** (not one-per-step — see CLAUDE.md "Gate tiering"):
 
 ```
 /campaign-init <domain>
+/research-client <client>    } silent auto-run — no gates
+/icp-define <client>         } (cheap, reversible, no API spend)
     |
-    v  [user reviews folder structure]
-/research-client <client>
+    v  ━━━ GATE 1: Budget ━━━
+    |     "About to spend ~N Apollo credits on M prospects matching this ICP. Proceed?"
     |
-    v  [user reviews brief]
-/icp-define <client>
+/prospect <client>           } run together — one decision, two steps
+/enrich-and-score <client>   }
     |
-    v  [user reviews ICP]
-/prospect <client>
-    |
-    v  [user reviews prospect list]
-/enrich-and-score <client>
-    |
-    v  [user reviews scores]
 /draft-sequences <client>
     |
-    v  [user reviews sequences - CRITICAL GATE]
+    v  ━━━ GATE 2: Quality ━━━
+    |     Full recap: brief summary + ICP one-pager + top-10 prospects + 3 sample sequences.
+    |     This is the critical content gate. Take your time here.
+    |
+    v  ━━━ GATE 3: Irreversible ━━━
+    |     Paused-first reminder. Final go to push to CRM + sequencer.
+    |
 /activate <client>
     |
-    v  [user confirms push - FINAL GATE]
-/critique <client>
-    |
-    v  [capture per-step quality ratings for the eval loop]
+/critique <client>           — capture per-step ratings for the eval loop
 Done.
 ```
+
+Three gates instead of seven. Silent doesn't mean blind: `clients/<client>/assumptions.md` accumulates one-line assumption statements from each silent step, which the user can skim at any time. If research or ICP is clearly wrong, the user stops the run before Gate 1.
 
 ## How to run
 
 ### Option A: Full auto-chain
 
-Run the entire chain. Pause at every review gate and wait for user approval before continuing.
+Run the entire chain. Pause at the 3 tiered gates — not every step.
 
 At the start, tell the user:
 
 ```
 Starting full campaign for <domain>.
 
-This will run 8 steps:
-1. Initialize project folder
-2. Research the client
-3. Define ICP
-4. Find prospects (uses Apollo credits)
-5. Enrich and score (uses Apollo credits)
-6. Draft email sequences
-7. Push to CRM and sequencer (irreversible)
-8. Capture a per-step critique (eval signal for future skill improvements)
+8 steps, 3 gates:
+- Silent (auto-run): init, research-client, icp-define
+- Gate 1 — Budget: before prospect + enrich-and-score (Apollo credits)
+- Gate 2 — Quality: after draft-sequences (full recap, the critical gate)
+- Gate 3 — Irreversible: before activate (paused-first reminder)
+- Then: critique to capture eval signal
 
-I'll pause at every step for your review. Nothing goes live without your approval.
+Silent steps write to clients/<client>/assumptions.md — skim any time.
+Stop me before Gate 1 if the ICP is off.
 
-Ready to start?
+Ready?
 ```
 
 ### Option B: Step-by-step
@@ -86,17 +84,27 @@ You can also run each step separately:
 /critique <client>          # finally this — capture signal for skill improvements
 ```
 
-## Review gate behavior
+## Gate behavior
 
-At each gate:
+Three gates, each with a specific shape:
 
-1. **Show the output** (brief, ICP, prospect list, scores, sequences)
-2. **Ask for approval** ("Does this look right?")
-3. **Accept edits** (the user may want to change things)
-4. **Only proceed when the user says yes**
-5. **Never skip a gate**, even if the user says "just do everything"
+**Gate 1 — Budget** (before prospect + enrich-and-score)
+- State the credit estimate: "~N Apollo credits on M prospects matching this ICP."
+- If the ICP looks off (check `assumptions.md` from the silent steps), surface it here before spending.
+- Accept edits to the ICP. Proceed only on explicit "yes."
+- This gate covers BOTH prospect and enrich-and-score — don't re-gate after prospecting unless the prospect list is clearly wrong, in which case stop and ask.
 
-The sequences review gate and the activation gate are the two most important. Double-check at those points.
+**Gate 2 — Quality** (after draft-sequences, before activate)
+- Full recap in one view: brief summary (3 bullets), ICP one-pager, prospect count + top-10 scored rows, 3 sample sequences inline.
+- Don't paginate across turns — one scroll, everything visible.
+- Accept edits to any piece. This is the irreversible-copy gate; take the time.
+- Only proceed on explicit "yes."
+
+**Gate 3 — Irreversible** (before activate)
+- Paused-first reminder: "Campaigns will be created paused/unsent. You resume in the sequencer UI."
+- Final go/no-go. Proceed only on explicit "yes."
+
+Never skip Gate 2 or Gate 3 even if the user says "just do everything." Gate 1 can be bypassed only if the user has explicitly pre-authorized credit spend for this run.
 
 ## Resuming a partial run
 

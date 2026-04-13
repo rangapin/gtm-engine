@@ -20,13 +20,26 @@ Live at `.claude/skills/<skill-name>/SKILL.md`. Ten skills:
 Every skill follows the same shape. When editing a skill or writing a new one, preserve it:
 
 1. **Load context** — read the input files from `clients/<client>/` (previous skill's output).
-2. **Call tools** — Apollo, Clay, Exa, Attio MCP. Before any credit-consuming Apollo call, warn the user with estimated credit cost and wait for "proceed".
-3. **Write output file** — the next skill's input. Filenames are fixed: `brief.md`, `icp.json`, `prospects.csv`, `prospects.enriched.csv`, `sequences/`.
-4. **Review gate** — summarize for the user (never dump raw tool JSON), accept edits, wait for explicit approval.
-5. **Log** — append to `clients/<client>/logs/<step>.log.md`: what ran, which tools, counts, errors.
-6. **Confirm** — tell the user the next step.
+2. **Read prior-run signal** — glob `clients/*/critique.md` (all of them, not just the current client). For this skill's step, extract the 3 most frequently-mentioned weaknesses across critiques. State them to the user at the start ("Prior runs flagged: X, Y, Z — I'll bias against these.") and actually adjust behavior, not just acknowledge. This is how critiques become a compounding asset instead of a journal.
+3. **Call tools** — Apollo, Clay, Exa, Attio MCP. Before any credit-consuming Apollo call, warn the user with estimated credit cost and wait for "proceed".
+4. **Write output file** — the next skill's input. Filenames are fixed: `brief.md`, `icp.json`, `prospects.csv`, `prospects.enriched.csv`, `sequences/`.
+5. **Record assumptions** — append one sentence to `clients/<client>/assumptions.md`: `<step>: I assumed X because Y.` One line per skill-run. This is the 30-second skim-surface for review gates — the user reads assumptions, not full outputs.
+6. **Review gate** — summarize for the user (never dump raw tool JSON), accept edits, wait for explicit approval. See "Gate tiering" below — not every step needs a full gate.
+7. **Log** — append to `clients/<client>/logs/<step>.log.md`: what ran, which tools, counts, errors, which prior-critique flags were applied.
+8. **Confirm** — tell the user the next step.
 
 The file system IS the state. No globals, no hidden context between skills.
+
+## Gate tiering
+
+Not every step deserves a full review gate. The 7-gate sprawl the chain grew into is partly cargo-cult safety — review-everything theater that slows iteration without adding protection. Tier gates by stakes:
+
+- **Silent (auto-run, no gate):** `campaign-init`, `research-client`, `icp-define`. Cheap, reversible, no API spend, no external writes. Output lands in files the user can edit before the next step.
+- **Budget gate (before credit-spending):** one gate covers `prospect` + `enrich-and-score`. Phrased as an estimate: "About to spend ~N Apollo credits on M prospects matching this ICP. Proceed?" Don't gate these independently — the decision is joint.
+- **Quality gate (after `draft-sequences`):** the irreversible-copy-to-real-prospects gate. Full recap view: brief summary, ICP one-pager, prospect count + top-10 rows, 3 sample sequences inline. This is where the user actually reviews.
+- **Irreversible gate (before `activate`):** paused-first reminder, final go. No bulk activity before this.
+
+Silent doesn't mean blind — assumptions.md gives the user a 30-sec skim at any point, and if `research-client` or `icp-define` is clearly wrong the user stops the run before the budget gate.
 
 ## Resuming a partial run
 
@@ -46,9 +59,11 @@ Skills branch on whether an MCP is connected. Do not assume:
 
 When all email paths are missing, HeyReach alone is a legitimate single-channel activation. When everything is missing, `activate` falls back to CSV export. The skill presents options rather than failing.
 
-## Two irreversible gates
+## Paused-first discipline
 
-`draft-sequences` review and `activate` are the two gates where mistakes are expensive (bad copy goes to real prospects; records land in real CRM/sequencer). Double-confirm at both. **Always create sequencer campaigns paused** — HeyReach, Smartlead, and Apollo enrollments all start paused. The user resumes manually in the respective UI after visual review. No exceptions.
+The quality gate (after `draft-sequences`) and the irreversible gate (before `activate`) are the two where mistakes are expensive — bad copy goes to real prospects; records land in real CRM/sequencer. Double-confirm at both.
+
+**Always create sequencer campaigns paused.** HeyReach, Smartlead, Apollo enrollments, and Gmail drafts all start paused/unsent. The user resumes manually in the respective UI after visual review. No exceptions.
 
 ## Client isolation
 

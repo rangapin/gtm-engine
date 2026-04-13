@@ -9,6 +9,8 @@ When the user runs `/critique <client-name>`:
 
 This skill is the **eval loop primitive** for gtm-engine. Each run of the pipeline produces outputs of variable quality. Without a structured critique, "the copy was so-so" stays a vibe — not actionable signal. This skill turns that vibe into a one-page artifact the user (or Claude) can diff across clients to spot recurring weak spots.
 
+**Closed loop:** per CLAUDE.md's skill contract (Step 2), every pipeline skill reads `clients/*/critique.md` on load and extracts the 3 most-repeated weaknesses for its step, biasing its behavior accordingly. Writing the critique is only half the loop — the reads are what make it a compounding asset.
+
 ## What to do
 
 ### Step 1: Load context
