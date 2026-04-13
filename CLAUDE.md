@@ -8,10 +8,11 @@ A Claude Code project — no build, no tests, no runtime. The "code" is skill de
 
 ## Skills
 
-Live at `.claude/skills/<skill-name>/SKILL.md`. Nine skills:
+Live at `.claude/skills/<skill-name>/SKILL.md`. Ten skills:
 
-- `campaign-run` — full-chain playbook; invokes the seven pipeline skills with review gates between each
+- `campaign-run` — full-chain playbook; invokes the seven pipeline skills with review gates between each, then `/critique`
 - `campaign-status` — read-only inspector; reports which steps each client has completed and the next recommended step
+- `critique` — post-run per-step quality rating; output (`clients/<client>/critique.md`) is the eval signal for iterating on the skills
 - Pipeline: `campaign-init` → `research-client` → `icp-define` → `prospect` → `enrich-and-score` → `draft-sequences` → `activate`
 
 ## The skill contract

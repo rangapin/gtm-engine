@@ -33,6 +33,9 @@ This playbook chains all skills in sequence:
 /activate <client>
     |
     v  [user confirms push - FINAL GATE]
+/critique <client>
+    |
+    v  [capture per-step quality ratings for the eval loop]
 Done.
 ```
 
@@ -47,7 +50,7 @@ At the start, tell the user:
 ```
 Starting full campaign for <domain>.
 
-This will run 7 steps:
+This will run 8 steps:
 1. Initialize project folder
 2. Research the client
 3. Define ICP
@@ -55,6 +58,7 @@ This will run 7 steps:
 5. Enrich and score (uses Apollo credits)
 6. Draft email sequences
 7. Push to CRM and sequencer (irreversible)
+8. Capture a per-step critique (eval signal for future skill improvements)
 
 I'll pause at every step for your review. Nothing goes live without your approval.
 
@@ -78,7 +82,8 @@ You can also run each step separately:
 /prospect <client>          # then this
 /enrich-and-score <client>  # then this
 /draft-sequences <client>   # then this
-/activate <client>          # finally this
+/activate <client>          # then this
+/critique <client>          # finally this — capture signal for skill improvements
 ```
 
 ## Review gate behavior

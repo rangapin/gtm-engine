@@ -1,5 +1,13 @@
 # Client working state — prospect PII, emails, scores, draft copy. Keep local.
-clients/
+# Exception: critique.md and logs/critique.log.md ARE tracked, since they're
+# the cross-run eval signal and contain no PII (ratings + skill-edit ideas).
+clients/*
+!clients/*/
+clients/*/*
+!clients/*/critique.md
+!clients/*/logs/
+clients/*/logs/*
+!clients/*/logs/critique.log.md
 
 # Local Claude Code state
 .claude/settings.local.json
