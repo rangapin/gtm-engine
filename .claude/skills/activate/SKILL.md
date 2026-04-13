@@ -1,6 +1,6 @@
 ---
 name: activate
-description: Push approved prospects to Attio (CRM) and launch the outbound campaign via HeyReach (LinkedIn) or Smartlead (email). Final step before campaign goes live. Use after /draft-sequences and user approval.
+description: Push approved prospects to Attio (CRM) and launch the outbound campaign via HeyReach (LinkedIn), Smartlead (email), or Gmail drafts (manual/test mode). Final step before campaign goes live. Use after /draft-sequences and user approval.
 ---
 
 # /activate - Push to CRM and Sequencer
@@ -77,10 +77,11 @@ Before pushing, ask the user which channel(s) to activate on, based on what's co
 
 - **HeyReach MCP connected?** → LinkedIn outreach is an option. Good for B2B outbound to founders/marketers, especially when email coverage is patchy. Leads enrolled by LinkedIn URL (no email required).
 - **Smartlead MCP connected?** → Email outreach. Good when email coverage is ≥70% and the audience reads cold email.
-- **Both connected?** → Multi-channel (LinkedIn connect → LinkedIn message → email) has higher response rates than either alone. Recommend both unless the user has a reason not to.
-- **Neither connected?** → Apollo Sequences (if available on their plan) or CSV fallback.
+- **Gmail MCP connected?** → **Manual / test mode.** Creates unsent email drafts in the authed Gmail account — one draft per prospect, email 1 of the sequence only. Good for: workflow smoke tests, low-volume outbound (<10 prospects), or when the user wants eyes-on-every-email before send. Not a real sequencer — no follow-up automation, no deliverability warming, no reply tracking.
+- **Both HeyReach + Smartlead connected?** → Multi-channel (LinkedIn connect → LinkedIn message → email) has higher response rates than either alone. Recommend both unless the user has a reason not to.
+- **Neither HeyReach nor Smartlead?** → Offer Gmail drafts (if connected) for small volume, Apollo Sequences (if available on their plan) for paid Apollo users, or CSV fallback as last resort.
 
-Default preference when not specified: **HeyReach (LinkedIn) first** when the prospect list has strong LinkedIn URL coverage and patchy email coverage, which is the common case on free-tier enrichment plans.
+Default preference when not specified: **HeyReach (LinkedIn) first** when the prospect list has strong LinkedIn URL coverage and patchy email coverage, which is the common case on free-tier enrichment plans. Gmail drafts if the user says the word "test" or the prospect count is ≤5.
 
 ### Step 5: Push to LinkedIn (HeyReach)
 
@@ -149,7 +150,33 @@ Smartlead is the default sequencer. Use the LeadMagic Smartlead MCP (`npx smartl
 3. `apollo_email_accounts_index` — pick sender.
 4. Confirm with user, then `apollo_emailer_campaigns_add_contact_ids` to enroll.
 
-**Option C (last resort): CSV export**
+**Option C: Gmail drafts (test / manual mode)**
+
+Creates unsent drafts in the authed Gmail account. **Email 1 only** — follow-ups stay in `sequences/*.md` and the user re-drafts them closer to send time if/when email 1 gets a reply.
+
+Before creating any draft:
+
+1. Call `gmail_get_profile` to confirm the authed account. **Flag to the user if the Gmail account differs from the client's domain** (e.g., authed as `personal@gmail.com` but the client is `acme.com`). Offer to abort so they can connect the right account. This is a foot-gun — drafts land in the "wrong" inbox if the user doesn't notice.
+
+2. For each prospect in `prospects.enriched.csv`:
+   - **If `person_email` is populated:** create the draft with `to = person_email`, subject = email 1 subject from the sequence file, body = email 1 body.
+   - **If `person_email` is blank (pending enrichment):** create the draft with `to` omitted, and prefix the subject with `[DRAFT — <person_name>, email TBD]` so it sorts recognizably in the drafts folder. Include the LinkedIn URL in the first line of the body so the user can hand-resolve the address later.
+
+3. Use `gmail_create_draft` per prospect. Capture the returned `draftId` for the log.
+
+4. Present the final confirmation:
+   ```
+   Gmail drafts created in <authed-email> (UNSENT):
+   - <N>/<total> with To: populated
+   - <M> with blank To: (email pending enrichment)
+
+   Review and send manually:
+   https://mail.google.com/mail/u/0/#drafts
+   ```
+
+   **Do not call `gmail_send` or `gmail_send_draft`.** Drafts stay unsent. This is the irreversible gate — the user sends each one from Gmail after visual review.
+
+**Option D (last resort): CSV export**
 
 Only if neither MCP is available. Write:
 - `clients/<client-name>/smartlead-contacts.csv` (contact list for import)
@@ -174,6 +201,11 @@ Email (Smartlead / Apollo, if used):
 - <N> contacts enrolled in "<sequence-name>"
 - Sending from: <sender-email>
 - Status: PAUSED — resume in sequencer UI after review
+
+Gmail drafts (if used):
+- <N> drafts created in <authed-email>
+- <M>/<N> have To: populated; rest pending email enrichment
+- Status: UNSENT — user sends manually from Gmail
 
 Next steps:
 - Open each sequencer UI, review the messages in context, then resume
@@ -208,10 +240,11 @@ Write to `clients/<client-name>/logs/activate.log.md`:
 
 ## Tools used
 
-- **Attio MCP** (if connected): create-record, create-note
+- **Attio MCP** (if connected): upsert-record (by domain for companies, by email for people), create-record (for people without email), create-note
 - **HeyReach MCP**: list senders, create campaign, add leads (by LinkedIn URL), set sequence, pause/start (verify exact tool names against the installed MCP — they vary by provider)
 - **Smartlead MCP (LeadMagic)**: smartlead_fetch_all_email_accounts, smartlead_create_campaign, smartlead_update_campaign_sequences, smartlead_add_leads_to_campaign
 - **Apollo.io** (Apollo-sequences fallback): apollo_contacts_create, apollo_contacts_search, apollo_emailer_campaigns_search, apollo_emailer_campaigns_add_contact_ids, apollo_email_accounts_index
+- **Gmail MCP** (test/manual mode): gmail_get_profile, gmail_create_draft. Never use gmail_send or gmail_send_draft — drafts must stay unsent.
 
 ## Safety rails
 
@@ -219,7 +252,8 @@ This skill handles irreversible actions. Extra caution:
 
 1. **Always confirm before pushing.** Never auto-push to CRM or any sequencer.
 2. **Check for duplicates.** Use `run_dedupe: true` in Apollo. Check Attio for existing records. Smartlead deduplicates by email; HeyReach deduplicates by LinkedIn URL within a campaign.
-3. **Always create paused.** Every HeyReach campaign, Smartlead campaign, and Apollo enrollment is created in paused state. The user resumes manually in the respective UI after visual review. No exceptions.
+3. **Always create paused / unsent.** Every HeyReach campaign, Smartlead campaign, Apollo enrollment, and Gmail draft is created in paused/unsent state. The user resumes or sends manually in the respective UI after visual review. No exceptions.
 4. **LinkedIn-specific rails.** Keep daily send volumes within HeyReach's defaults. Warn if the chosen sender account is new (<30 days) or recently restricted. Keep connection-request notes under 300 characters.
-5. **Log everything.** If something goes wrong, the log should tell you exactly what was pushed, to which channel, and when.
-6. **No bulk delete.** If the user made a mistake, don't try to bulk-delete from CRM or sequencers. Flag the issue and let them handle it in the respective UI.
+5. **Gmail-specific rails.** The authed Gmail account may not match the client's domain — always call `gmail_get_profile` first and flag a mismatch to the user before creating drafts. Never call `gmail_send` or `gmail_send_draft`; drafts stay unsent until the user sends them from the Gmail UI.
+6. **Log everything.** If something goes wrong, the log should tell you exactly what was pushed, to which channel, and when.
+7. **No bulk delete.** If the user made a mistake, don't try to bulk-delete from CRM or sequencers. Flag the issue and let them handle it in the respective UI.
