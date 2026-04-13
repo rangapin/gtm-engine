@@ -12,9 +12,12 @@ When the user runs `/draft-sequences <client-name>`:
 ### Step 1: Load context
 
 Read:
+- `.claude/skills/draft-sequences/COPY_RULES.md` — **the cold-email craft rules. Load this every time; it's the drafting spec.**
 - `clients/<client-name>/prospects.enriched.csv` (enriched + scored prospects)
 - `clients/<client-name>/brief.md` (client research)
 - `clients/<client-name>/icp.json` (ICP definition)
+
+`COPY_RULES_SOURCES.md` sits alongside for traceability — do NOT load it at drafting time (too long). Only read it if the user wants to debate a specific rule against its evidence.
 
 Filter to non-disqualified prospects with `icp_score >= 40` (or whatever threshold the user prefers). Ask:
 
@@ -25,18 +28,19 @@ Want to adjust the score threshold, or should I proceed?
 
 ### Step 2: Define the sequence structure
 
-Default structure is a 3-email sequence. Present it to the user:
+Default structure is a 3–4 email sequence on the **3-7-7 cadence** (from `COPY_RULES.md`). Present it to the user:
 
 ```
-Default sequence structure:
-- Email 1: Cold open. Personalized hook based on the prospect's signal/context. Introduce the value prop. Soft CTA (reply, not book a call).
-- Email 2: Follow-up (3 days later). Different angle. Social proof or case study if available. Same soft CTA.
-- Email 3: Breakup (5 days later). Short, direct. "Is this relevant?" Last chance.
+Default sequence structure (3-7-7 cadence):
+- Email 1 (Day 0): Cold open. Timeline-based hook from the prospect's signal. Permission-ask CTA.
+- Email 2 (Day 3): Angle-shift follow-up. Different proof point or framing of the same problem. Do not repeat Email 1's pitch.
+- Email 3 (Day 10): Qualifying question that makes "not right now" an easy reply. Or insight-first with no pitch.
+- Email 4 (Day 17, optional): Breakup. Zero pitch, zero guilt. Graceful exit.
 
-Want to adjust the structure, timing, or approach?
+Want to adjust structure, timing, or drop the breakup?
 ```
 
-Let the user modify the sequence structure if they want. Some clients prefer 4-5 emails, some want LinkedIn touches mixed in, some want a harder CTA.
+Let the user modify the sequence structure if they want. Some clients prefer 4-5 emails, some want LinkedIn touches mixed in, some want a harder CTA. **Hard rule from research: do not exceed 4 emails.** Past #4, spam complaints triple and reply rates drop 55%.
 
 ### Step 3: Calibrate the voice
 
@@ -58,20 +62,20 @@ Any specific phrases to use or avoid?
 
 ### Step 4: Write the sequences
 
-For each prospect (or group of similar prospects), write the full sequence.
+For each prospect (or group of similar prospects), write the full sequence **against the rules in `COPY_RULES.md`**. That file is the drafting spec — don't try to remember the rules from memory, read them.
 
-**Personalization rules:**
-- Email 1 MUST reference something specific about the prospect's company or situation. Not "I see you're in fintech" (generic). Instead, reference a specific signal: "Saw you just raised your Series B" or "Noticed you're hiring a Head of Platform."
-- Email 2 should take a different angle. If Email 1 was about a signal, Email 2 might be about a pain point or a peer's experience.
-- Email 3 is short. 2-3 sentences max.
+**The short version (full text in `COPY_RULES.md`):**
+- Target 50–80 words per email. First-touch 25–50 if possible. Hard ceiling 100.
+- Subject lines lowercase, ≤5 words, prospect-specific not category-generic. Never fake `Re:`.
+- Plain text only — no HTML, no bullets, no bold. 5th-grade reading level.
+- Openers: timeline hook from the prospect's signal. Earn relevance in the first 7 words. No "I" as the first word.
+- CTA: ask permission, don't assume interest. One CTA per email. No calendar links in Email 1.
+- Angle-shift every follow-up. Do not repeat Email 1's pitch.
+- Persona-calibrate: C-suite under 50 words + outcome-led; VPs connect strategy to mechanism; ICs/technical use operational language; finance wants numbers, no adjectives.
+- Sign-off: `<first_name>\n<role> @ <domain>`. Not a bare first name.
+- Forbidden words (AI tells): impressed, innovative, streamline, leverage, delighted, cutting-edge, game-changing, revolutionary, "I hope this email finds you well", "I came across your profile", "quick question" (subject), "I'd love to pick your brain".
 
-**Formatting rules:**
-- No HTML. Plain text only.
-- Short paragraphs (1-2 sentences each).
-- No more than 100 words per email.
-- Subject lines: 3-6 words, lowercase, no punctuation tricks.
-- No "Dear <name>" or "I hope this finds you well." Ever.
-- Sign off with the sender's first name only.
+**Tension awareness.** Several rules in `COPY_RULES.md` conflict in edge cases — e.g., permission-ask CTAs ("not sure if this is relevant, but…") read weak to founders who prefer directness; humor lands for marketing personas but misfires for finance. When rules clash, resolve using the prospect's persona and the client's voice, and flag the tradeoff at the review gate rather than picking one rule silently.
 
 **Personalization variables (canonical tokens):**
 
@@ -147,6 +151,22 @@ Each file format:
 <email body>
 ```
 
+### Step 6.5: Lint pass
+
+Before showing drafts to the user, re-read every email against `COPY_RULES.md`. For each email, check:
+
+1. **Length.** Word count ≤100, Email 1 ideally ≤50. If over, cut.
+2. **Subject line.** Lowercase? ≤5 words? Prospect-specific (not generic category)? No fake `Re:`?
+3. **Forbidden words.** Grep the body for: impressed, innovative, streamline, leverage, delighted, cutting-edge, game-changing, revolutionary, "hope this email finds you well", "came across your profile", "quick question" (as subject), "pick your brain". Any hit → rewrite that line.
+4. **Opener.** First 7 words earn relevance? Timeline hook if a recent signal exists? No "I" as the literal first word of Email 1?
+5. **CTA.** One CTA, permission-asking? No calendar link in Email 1?
+6. **Angle-shift.** Email 2 opens a different angle from Email 1? Email 3 is the qualifying question or insight-first, not "just following up"?
+7. **Signature.** `<first_name>\n<role> @ <domain>`, not a bare first name?
+8. **Mobile test.** Would this fit on a phone screen without scrolling?
+9. **Aloud test.** Read it in your head as if it arrived from a stranger. Does any sentence exist only to scaffold the pitch? Delete it.
+
+Fix violations before the review gate. If a rule conflicts with the client's voice (e.g., permission-ask feels weak for this founder), leave it and flag the tradeoff to the user — don't pretend the rule is absolute. Log which rules you applied vs bent in the drafting log.
+
 ### Step 7: Review gate
 
 This is the most important review gate. Present 2-3 sample sequences to the user:
@@ -182,6 +202,8 @@ Write to `clients/<client-name>/logs/sequences.log.md`:
 - **Sequence structure:** <N> emails, <timing>
 - **Approach:** individual / grouped by <criteria>
 - **Voice:** <description>
+- **Rules applied:** (list key COPY_RULES.md rules that shaped these drafts, e.g. timeline-hook opener, permission-ask CTA, 3-7-7 cadence)
+- **Rules bent (and why):** (list any rules deliberately broken for this client's voice or persona — e.g. "used direct CTA over permission-ask for founder audience who prefers directness")
 - **Output:** clients/<client-name>/sequences/
 - **Status:** User reviewing
 ```
@@ -192,16 +214,6 @@ This skill is pure writing. No MCP calls. Claude does the copywriting based on t
 
 ## Writing quality standards
 
-**Good first line examples:**
-- "Noticed Acme just brought on a Head of Data - usually means the data stack is getting a rethink."
-- "Three of your competitors switched to <product category> in Q1. Curious if that's on your radar."
-- "Your Series B announcement caught my eye - we help companies at that stage solve <specific problem>."
-
-**Bad first line examples (never write these):**
-- "I hope this email finds you well."
-- "I'm reaching out because..."
-- "I noticed your company is doing great things in the <industry> space."
-- "As a fellow <title>, I understand the challenges of..."
-- "I'd love to pick your brain about..."
+The authoritative rules live in `COPY_RULES.md`. Example pairs and research citations live in `COPY_RULES_SOURCES.md`.
 
 **The test:** Would a real human send this email to someone they actually want a response from? If it sounds like a mass email, rewrite it.
