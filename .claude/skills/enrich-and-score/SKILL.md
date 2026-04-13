@@ -78,13 +78,9 @@ Write a brief `score_reasoning` for each row explaining the score.
 
 ### Step 5: Write enriched output
 
-Write `clients/<client-name>/prospects.enriched.csv` with columns:
+Write `clients/<client-name>/prospects.enriched.csv`. Schema is defined in `CLAUDE.md` ("File schemas" section) — all columns from `prospects.csv` plus `person_email`, `person_phone`, `icp_score`, `score_reasoning`, `disqualified`.
 
-```csv
-company_name,company_domain,industry,employee_count,hq_location,person_name,person_title,person_email,person_phone,person_linkedin,icp_score,score_reasoning,disqualified
-```
-
-Sort by `icp_score` descending. Disqualified rows go to the bottom with `disqualified=true`.
+Sort by `icp_score` descending. Disqualified rows go to the bottom with `disqualified=true` and `icp_score=0`.
 
 ### Step 6: Review gate
 

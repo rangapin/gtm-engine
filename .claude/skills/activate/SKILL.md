@@ -88,9 +88,27 @@ Use the HeyReach MCP. Typical flow (verify exact tool names against the installe
 
 1. List LinkedIn sender accounts → ask the user which sender to use. LinkedIn sender matters: the message comes from this person's profile.
 2. Create a new campaign named `<client-name>-<YYYY-MM-DD>`. **Always create paused.**
-3. Load the LinkedIn sequence steps (connection request note + 2–3 follow-up messages) from `clients/<client-name>/sequences/`. If drafts were written for email, adapt: shorter, no subject line, no `{{first_name}}` placeholders that HeyReach doesn't recognize (use the HeyReach variable syntax — verify in their docs).
-4. Add leads to the campaign using LinkedIn URLs from `prospects.enriched.csv`. HeyReach deduplicates by profile URL.
-5. Leave paused. Show the user the HeyReach campaign URL so they can review in the UI and start the campaign manually.
+3. **Adapt email drafts to LinkedIn format:**
+   - Shorter. Connection-request note ≤300 chars. Follow-ups 2-4 short sentences.
+   - No subject line on LinkedIn messages. Drop `{{EMAIL_SUBJECT}}`.
+   - Map canonical tokens to HeyReach variable syntax (see mapping table below). If unsure, inspect an existing HeyReach campaign or template via the MCP to confirm the exact token format before pushing.
+4. Load the LinkedIn sequence steps (connection request note + 2–3 follow-up messages) from `clients/<client-name>/sequences/`.
+5. Add leads to the campaign using LinkedIn URLs from `prospects.enriched.csv`. HeyReach deduplicates by profile URL. Pass per-prospect hook values (`HOOK_SHORT`, `HOOK_EXPANDED`) as custom variables so they survive token substitution.
+6. Leave paused. Show the user the HeyReach campaign URL so they can review in the UI and start the campaign manually.
+
+**Canonical token → platform mapping:**
+
+| Canonical (from draft-sequences) | Smartlead | HeyReach | Notes |
+|---|---|---|---|
+| `{{FIRST_NAME}}` | `{{first_name}}` | `{{FirstName}}` | Native merge tag on both |
+| `{{LAST_NAME}}` | `{{last_name}}` | `{{LastName}}` | Native merge tag on both |
+| `{{COMPANY}}` | `{{company_name}}` | `{{CompanyName}}` | Native merge tag on both |
+| `{{SENDER_NAME}}` | `{{sender_name}}` | sender profile name | HeyReach uses sender account, not a variable |
+| `{{HOOK_SHORT}}` | custom var | custom var | Must be passed per-lead at enrollment |
+| `{{HOOK_EXPANDED}}` | custom var | custom var | Must be passed per-lead at enrollment |
+| `{{EMAIL_SUBJECT}}` | subject field | n/a | Email only |
+
+HeyReach variable syntax varies by MCP version. **Before pushing**, call the MCP to fetch an existing campaign or template and confirm the exact token format (e.g., `{{FirstName}}` vs `{{first_name}}` vs `[[FirstName]]`). If the mapping is wrong, literal `{{...}}` strings will ship into real LinkedIn messages.
 
 **Safety rails specific to LinkedIn:**
 - LinkedIn connection-request spam gets accounts restricted. Keep daily send volume low (HeyReach's default limits are sane — don't override).
@@ -109,7 +127,7 @@ Smartlead is the default sequencer. Use the LeadMagic Smartlead MCP (`npx smartl
 
 3. `smartlead_update_campaign_sequences` — load the drafted email steps from `clients/<client-name>/sequences/` into the campaign. Preserve per-step delay and subject line from the drafts.
 
-4. `smartlead_add_leads_to_campaign` — enroll the contacts from `prospects.enriched.csv`. Pass personalization fields (first_name, company_name, score_reasoning → custom variable) so sequence merge tags work.
+4. `smartlead_add_leads_to_campaign` — enroll the contacts from `prospects.enriched.csv`. Map canonical tokens to Smartlead syntax (see token mapping table in Step 5). Pass personalization fields as Smartlead custom variables: `first_name`, `last_name`, `company_name`, plus per-prospect hook values (`HOOK_SHORT`, `HOOK_EXPANDED`, `EMAIL_SUBJECT`) so sequence merge tags resolve.
 
 5. Present the final confirmation:
    ```

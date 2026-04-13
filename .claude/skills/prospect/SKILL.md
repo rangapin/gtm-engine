@@ -50,11 +50,7 @@ Map ICP fields to Apollo filters:
 
 ### Step 4: Compile the prospect list
 
-Write `clients/<client-name>/prospects.csv` with columns:
-
-```csv
-company_name,company_domain,industry,employee_count,hq_location,person_name,person_title,person_linkedin,apollo_person_id,apollo_org_id,icp_match_notes
-```
+Write `clients/<client-name>/prospects.csv`. Schema is defined in `CLAUDE.md` ("File schemas" section) — use those columns exactly.
 
 Fill `icp_match_notes` with a brief note on why this company/person matches the ICP. For example: "Series B fintech, 120 employees, CTO - matches size + industry + title."
 

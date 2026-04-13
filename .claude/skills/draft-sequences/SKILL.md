@@ -73,13 +73,24 @@ For each prospect (or group of similar prospects), write the full sequence.
 - No "Dear <name>" or "I hope this finds you well." Ever.
 - Sign off with the sender's first name only.
 
-**Personalization variables:**
-Use these placeholders that the sequencer will fill:
-- `{{first_name}}` - prospect's first name
-- `{{company_name}}` - prospect's company name
-- `{{sender_name}}` - the person sending (client's rep)
+**Personalization variables (canonical tokens):**
 
-But the real personalization (the hook, the signal reference) should be written specifically, not templated. This is what makes it work.
+Use UPPER_SNAKE_CASE. The `/activate` skill maps these to the target platform's syntax (Smartlead, HeyReach, etc.) before pushing.
+
+Per-prospect tokens (the sequencer fills these):
+- `{{FIRST_NAME}}` - prospect's first name
+- `{{LAST_NAME}}` - prospect's last name
+- `{{COMPANY}}` - prospect's company name
+- `{{SENDER_NAME}}` - the person sending (client's rep)
+
+Per-prospect hook tokens (you fill these when writing; stored per-prospect in the sequence file):
+- `{{HOOK_SHORT}}` - one-line opener referencing the prospect's specific signal
+- `{{HOOK_EXPANDED}}` - 2-3 sentence version for email body
+- `{{EMAIL_SUBJECT}}` - per-prospect subject line
+
+The grouped-sequences pattern (see Step 5) uses segment template files for the reusable body, and per-prospect files that only define the hook values. See existing `clients/claybootcamp/sequences/` for the reference pattern.
+
+The real personalization (the hook, the signal reference) must be written specifically per-prospect, not left generic. This is what makes it work.
 
 ### Step 5: Group similar prospects
 
@@ -99,10 +110,13 @@ For each prospect (or group), write to `clients/<client-name>/sequences/`:
 
 ```
 clients/<client-name>/sequences/
-  <company-domain>_<person-name>.md    # individual
-  OR
-  group_<profile-type>.md              # grouped
+  <company-domain>_<person-name>.md     # individual (full sequence inline)
+  OR (grouped pattern)
+  _SEGMENT_<A|B|C>_template.md          # reusable body with {{...}} tokens
+  <company-domain>_<person-name>.md     # per-prospect hook values only
 ```
+
+Underscore-prefixed files (`_SEGMENT_*_template.md`) are grouped templates referenced by per-prospect hook files. The underscore sorts them to the top of the directory listing.
 
 Each file format:
 

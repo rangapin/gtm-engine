@@ -8,10 +8,11 @@ A Claude Code project — no build, no tests, no runtime. The "code" is skill de
 
 ## Skills
 
-Live at `.claude/skills/<skill-name>/SKILL.md`. Eight skills:
+Live at `.claude/skills/<skill-name>/SKILL.md`. Nine skills:
 
-- `campaign-run` — full-chain playbook; invokes the seven below with review gates between each
-- `campaign-init` → `research-client` → `icp-define` → `prospect` → `enrich-and-score` → `draft-sequences` → `activate`
+- `campaign-run` — full-chain playbook; invokes the seven pipeline skills with review gates between each
+- `campaign-status` — read-only inspector; reports which steps each client has completed and the next recommended step
+- Pipeline: `campaign-init` → `research-client` → `icp-define` → `prospect` → `enrich-and-score` → `draft-sequences` → `activate`
 
 ## The skill contract
 
@@ -51,6 +52,59 @@ When all email paths are missing, HeyReach alone is a legitimate single-channel 
 ## Client isolation
 
 Each client is a folder under `clients/`. Skills read and write only within the folder for the client name they were invoked with. Never cross-reference data between clients.
+
+## File schemas (single source of truth)
+
+Every skill reads from and writes to the files below. Column lists live here, not in individual skill files — update here when adding a column and the skills stay in sync.
+
+### `prospects.csv` (output of `prospect`)
+
+```
+company_name, company_domain, industry, employee_count, hq_location,
+person_name, person_title, person_linkedin,
+apollo_person_id, apollo_org_id, icp_match_notes
+```
+
+- `icp_match_notes`: one-line plain English reason this row passed the ICP filter.
+- No emails/phones at this stage — those come from `enrich-and-score`.
+
+### `prospects.enriched.csv` (output of `enrich-and-score`)
+
+All columns from `prospects.csv`, plus:
+
+```
+person_email, person_phone,
+icp_score, score_reasoning, disqualified
+```
+
+- `icp_score`: integer 0-100. Sorted descending in the output file.
+- `score_reasoning`: one-line plain English. Must be human-readable — the user needs to argue with it.
+- `disqualified`: boolean (`true` / `false`). Disqualified rows sort to the bottom with `icp_score=0`.
+
+### `sequences/` (output of `draft-sequences`)
+
+Two patterns are supported:
+
+**Individual** — one file per prospect with full sequence inline:
+```
+clients/<client>/sequences/<company-domain>_<person-name>.md
+```
+
+**Grouped** — segment templates + per-prospect hook files:
+```
+clients/<client>/sequences/
+  _SEGMENT_<A|B|C>_template.md     # reusable body with {{...}} tokens
+  <company-domain>_<person-name>.md  # per-prospect hook values only
+```
+
+Underscore prefix on segment templates sorts them to the top of the directory listing.
+
+### Canonical sequence tokens
+
+Use UPPER_SNAKE_CASE in all sequence files. `/activate` maps these to each platform's variable syntax (see the mapping table in `activate/SKILL.md` Step 5).
+
+Per-prospect (sequencer fills): `{{FIRST_NAME}}`, `{{LAST_NAME}}`, `{{COMPANY}}`, `{{SENDER_NAME}}`
+Per-prospect hooks (you fill at drafting): `{{HOOK_SHORT}}`, `{{HOOK_EXPANDED}}`, `{{EMAIL_SUBJECT}}`
 
 ## Conventions worth keeping
 

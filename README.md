@@ -51,6 +51,7 @@ acme.com
 | `/draft-sequences` | Write personalized email sequences |
 | `/activate` | Push to CRM and sequencer |
 | `/campaign-run` | Run the full chain with review gates |
+| `/campaign-status` | Report state of one or all client campaigns |
 
 ## Built For
 
