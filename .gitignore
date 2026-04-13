@@ -1,0 +1,19 @@
+# Client working state — prospect PII, emails, scores, draft copy. Keep local.
+clients/
+
+# Local Claude Code state
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# Env
+.env
+.env.local
+*.env
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.vscode/
+.idea/
