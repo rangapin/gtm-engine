@@ -5,7 +5,9 @@ description: Full campaign workflow from domain to launch. Chains all skills in 
 
 # /campaign-run - Full Campaign Workflow
 
-When the user runs `/campaign-run <domain>`:
+When the user runs `/campaign-run <domain> [count=N]`:
+
+**`count=N` (optional):** target contact count for the prospecting step. Default 25. Pass through to `/prospect` as `count=N`. Affects only `/prospect` — all other steps read whatever ends up in `prospects.csv`. Recognize the same syntax variants `/prospect` accepts (`count=`, `n=`, trailing number).
 
 ## Overview
 

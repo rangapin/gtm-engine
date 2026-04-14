@@ -5,7 +5,9 @@ description: Find target companies and contacts matching the client's ICP. Uses 
 
 # /prospect - Find Target Companies and Contacts
 
-When the user runs `/prospect <client-name>`:
+When the user runs `/prospect <client-name> [count=N]`:
+
+**`count=N` (optional):** target roughly N contacts. Default is 25. The skill paginates through Apollo until the contact count reaches N (or Apollo exhausts matches — log whichever). Read the arg from the invocation string; if absent, use 25. Accept common variants: `count=50`, `count:50`, `n=50`, or plain trailing `50` if it's clearly a number.
 
 ## What to do
 
@@ -25,9 +27,11 @@ Map ICP fields to Apollo filters:
 - `target_regions` -> `organization_locations`
 - `target_signals` like "recently raised Series B" -> `latest_funding_date_range` (last 12 months) + relevant funding filters
 
-Start with `per_page: 25` and `page: 1`. You can paginate for more results if the user wants a bigger list.
+Start with `per_page: 25` and `page: 1`. Paginate until the contact count in Step 3 reaches the `count=N` target (or Apollo runs out of matches). If the user asks for more after seeing the preview, continue paginating.
 
 **Cost note:** Apollo company + people search uses a small number of search-credits per page (not the high-cost `apollo_people_match` credits — those fire in enrichment). Proceed without a gate; the real budget decision comes after prospecting when the user sees the list.
+
+**Target contact count:** read `count=N` from the invocation. Default 25. The goal applies to the contact count (output of Step 3), not the company count (Step 2) — companies-per-contact varies by title density. If Apollo exhausts before hitting the target, stop paginating and log the shortfall (`requested N, surfaced M`).
 
 ### Step 3: Search for people at those companies
 
@@ -54,6 +58,7 @@ Present inline — not a summary, not counts, the actual top rows:
 
 ```
 Prospects found for <client-name>: <N> companies, <M> contacts.
+(target: <count=N>; <"hit target" | "Apollo exhausted at M">)
 Saved to clients/<client-name>/prospects.csv.
 
 Top 10 rows (sorted by ICP-match strength of icp_match_notes):
@@ -97,6 +102,8 @@ Write to `clients/<client-name>/logs/prospect.log.md`:
 - **Companies found:** <N>
 - **Contacts found:** <M>
 - **Output:** clients/<client-name>/prospects.csv
+- **Target count:** <count=N> (or "default 25")
+- **Surfaced:** <M> contacts across <K> companies (<"hit target" | "Apollo exhausted at M, short of N">)
 - **Status:** Preview shown (Gate 1 of 2) — user <approved | edited | re-ran>
 - **Rows removed at preview:** <N> (if user trimmed prospects.csv)
 ```
