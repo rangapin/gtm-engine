@@ -29,6 +29,8 @@ The file system IS the state (per `CLAUDE.md` - "The skill contract"). Determine
 | + `prospects.enriched.csv` | enriched + scored |
 | + `sequences/*.md` | sequences drafted |
 | + `logs/activate.log.md` with non-placeholder content | activated |
+| + `results.csv` | activated + tracking outcomes |
+| + `critique.md` with mtime > `results.csv` mtime | critiqued |
 
 The last file written tells you the last completed step. **Do not call MCP tools from this skill** — read-only from disk.
 
@@ -39,6 +41,7 @@ For each client, read (do not summarize raw JSON to the user):
 - `prospects.enriched.csv` if present — count rows, count non-disqualified, score distribution (High 70+, Med 40-69, Low 1-39, DQ).
 - `sequences/` if present — count sequence files (excluding `_SEGMENT_*_template.md`, which are templates not per-prospect drafts).
 - `logs/RESUME.md` if present — this is a human-written flag file. Surface its "Next action" and "Open flags" sections verbatim.
+- `results.csv` if present — count total rows, count rows where `replied` is non-null (outcomes_filled), count rows where `replied=true` (reply_count), note mtime as "last outcome edit: <N> days ago".
 - Most recent `logs/*.log.md` modification time — "last activity: <N> days ago".
 
 ### Step 4: Report
@@ -54,6 +57,7 @@ Counts:
 - Prospects: <N> (enriched: <M>, non-DQ: <K>)
 - Score distribution: High <N> | Med <N> | Low <N> | DQ <N>
 - Sequences drafted: <N>
+- Outcomes: <outcomes_filled>/<total> filled (<pct>%), <reply_count> replies, last edit <N> days ago   [only when results.csv exists]
 
 Next step: /<skill-name> <client-name>
     <one line: what that step will do>
@@ -77,6 +81,25 @@ Run /campaign-status <client-name> for detail on one client.
 
 Sort by most recent activity (freshest first).
 
+### Step 4a: Compute flags
+
+Compute the following flags for each client and surface them as bullets under "Flags:" in the single-client report (or as inline notes in the multi-client format). If none apply, omit the "Flags:" section.
+
+**Outcome-capture flags** (compute only when `results.csv` exists):
+
+- If stage is `activated + tracking outcomes` AND `outcomes_filled / total < 0.5` AND `days since activate log mtime >= 7`:
+  `results.csv <pct>% filled (<filled>/<total>), <D> days since activate — outcomes may be getting missed. Run /capture-results to re-check or fill in the CSV.`
+
+- If `days since results.csv mtime > 14` AND `outcomes_filled / total < 1.0`:
+  `results.csv stale (<D> days since last edit, <pct>% filled), run /capture-results to refresh or mark remaining prospects.`
+
+**Activated-but-no-results flag** (compute when `results.csv` is absent):
+
+- If stage is `activated` AND `days since activate log mtime >= 3`:
+  `activated <D> days ago but no results.csv yet — run /capture-results <client> to start tracking outcomes.`
+
+Other flags may exist (errors from logs, RESUME.md notes, etc.) — preserve existing behavior for those.
+
 ### Step 5: Do not log
 
 This is a read-only skill. Do not write log files — `campaign-status` should leave no trace in `clients/`.
@@ -93,7 +116,9 @@ After determining stage, recommend:
 | prospected | `/enrich-and-score <client>` |
 | enriched + scored | `/draft-sequences <client>` |
 | sequences drafted | `/activate <client>` |
-| activated | no next step — report "campaign live, check sequencer UI" |
+| activated | `/capture-results <client>` |
+| activated + tracking outcomes | `/critique <client>` |
+| critiqued | no next step — campaign live, check sequencer UI and keep outcomes updated |
 
 If a `RESUME.md` exists with a "Next action" section, prefer that over the table — it reflects out-of-band context the file-system check can't see.
 
