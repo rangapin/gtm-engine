@@ -7,7 +7,7 @@ description: Capture a post-run critique of each pipeline step's output for a cl
 
 When the user runs `/critique <client-name>`:
 
-This skill is the **eval loop primitive** for gtm-engine. Each run of the pipeline produces outputs of variable quality. Without a structured critique, "the copy was so-so" stays a vibe — not actionable signal. This skill turns that vibe into a one-page artifact the user (or Claude) can diff across clients to spot recurring weak spots.
+This skill is the **eval loop primitive** for gtm-engine. Each run produces two kinds of signal: (1) how well Claude executed each step (the per-step 1-5 rating), and (2) whether the campaign actually worked (reply rate by tier, template performance). Without a structured critique, both stay vibes — not actionable. This skill turns both into a one-page artifact the user (or Claude) can diff across clients to spot recurring weak spots. The outcome signal (2) is only available when `/capture-results` has produced a `results.csv`; when absent, the skill still functions and captures (1) normally.
 
 **Closed loop:** per CLAUDE.md's skill contract (Step 2), every pipeline skill reads `clients/*/critique.md` on load and extracts the 3 most-repeated weaknesses for its step, biasing its behavior accordingly. Writing the critique is only half the loop — the reads are what make it a compounding asset.
 
@@ -22,6 +22,7 @@ Read the artifacts that exist in `clients/<client-name>/`:
 - `prospects.enriched.csv` (from enrich-and-score)
 - `sequences/` (from draft-sequences)
 - `logs/activate.log.md` (from activate)
+- `results.csv` (from capture-results, optional)
 
 If the run is partial, that's fine — rate only the steps that produced output.
 
@@ -36,6 +37,49 @@ What was the single weakest thing about it? (one line, skip if nothing)
 ```
 
 Don't batch — ask step by step so the user can actually think. If the user wants to skip a step ("idk, fine I guess"), record rating=3 with a note that it wasn't closely reviewed. Vague ratings are less useful but better than made-up specifics.
+
+### Step 2.5: Outcome signal (if results.csv exists)
+
+Check for `clients/<client-name>/results.csv`. If it doesn't exist, skip this step entirely — silent, not an error. If it exists but has fewer than 3 rows where `replied` is non-null (true or false), also skip — not enough data to say anything directional.
+
+Otherwise compute two findings from the file.
+
+**Finding 1 — reply rate by tier.**
+
+Group rows by `tier` column. For each group, count total rows and rows where `replied=true`. Format:
+
+```
+Outcome signal for this run:
+  High (70+):  <replies>/<total>   replies (<pct>%)
+  Med  (40-69): <replies>/<total>   replies (<pct>%)
+  Low  (1-39):  <replies>/<total>   replies (<pct>%)
+```
+
+Only show tiers that have at least one row. After the table, add exactly one annotation:
+
+- If reply-rate is strictly decreasing by tier (High > Med > Low): `Scoring directionally correct — higher-tier prospects reply more.`
+- If Low's reply rate exceeds High's: `Scoring inverted — Low tier out-replied High. Score rubric likely wrong; worth a pass.`
+- Otherwise (e.g., Med highest, or ties): `Scoring mixed — no clear tier signal yet.`
+- If total rows with `replied` non-null < 10 across all tiers, append: `Small sample (n=<N>) — directional only.`
+
+**Finding 2 — replies by step.**
+
+Group rows by `replied_on_step` (ignore rows where `replied=false` or `replied_on_step` is blank). Count replies per step 1..N where N is the max step seen. Format:
+
+```
+Replies by step:
+  Step 1: <count>
+  Step 2: <count>
+  Step 3: <count>
+  Step 4: <count>
+```
+
+For each step, also compute sends = total rows where that step was reached. With manual-fill v1, "reached step K" is hard to detect precisely — approximate as: all rows with `replied=true OR replied=false` are assumed to have been sent through the full sequence (i.e., `sends = total_with_replied_non_null` for every step). This is a simplification; the Instantly auto-pull in v2 will give exact per-step sends.
+
+If any step has 0 replies AND `sends >= 10`, add an annotation:
+`Step <K> got 0 replies across <sends> sends — candidate for rewrite or retirement.`
+
+Output both findings to the user in the terminal (so they see it before filling out Step 3 skill-edit suggestions). Also save them for the written critique file in Step 4.
 
 ### Step 3: Extract skill-edit suggestions
 
@@ -59,7 +103,7 @@ Write `clients/<client-name>/critique.md`:
 # Critique — <client>
 
 **Run date:** <ISO date>
-**Channel:** <HeyReach / Smartlead / Gmail / CSV>
+**Channel:** <HeyReach / Smartlead / Instantly / Gmail / CSV>
 **Prospects activated:** <N>
 **Outcome (fill in later):** <replies / meetings / silence>
 
@@ -73,6 +117,11 @@ Write `clients/<client-name>/critique.md`:
 | enrich-and-score | | |
 | draft-sequences | | |
 | activate | | |
+| capture-results | | |
+
+## Outcome signal
+
+<either the two findings from Step 2.5 verbatim, OR the line "No results.csv yet — run /capture-results when outcomes start landing.">
 
 ## Skill-edit candidates
 1. <concrete, testable suggestion>
@@ -100,6 +149,15 @@ This step is the top candidate for a skill-improvement pass.
 ```
 
 Don't propose the fix here — just surface the pattern. Fixing the skill is a separate conversation with the user.
+
+Additionally, if ≥2 clients have `results.csv` files where the same step number shows 0 replies across ≥10 sends (per Finding 2 logic in Step 2.5), flag it as a cross-client template weakness:
+
+```
+Cross-client template weakness: step 3 got 0 replies across 2 clients (24 total sends).
+This step's template is a candidate for rewrite — the weakness is not client-specific.
+```
+
+Don't propose the rewrite here — surface only.
 
 ### Step 6: Log
 
