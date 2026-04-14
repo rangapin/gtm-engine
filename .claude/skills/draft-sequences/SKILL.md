@@ -15,7 +15,9 @@ Read:
 - `.claude/skills/draft-sequences/COPY_RULES.md` — **the cold-email craft rules. Load this every time; it's the drafting spec.**
 - `clients/<client-name>/prospects.enriched.csv` (enriched + scored prospects)
 - `clients/<client-name>/brief.md` (client research)
-- `clients/<client-name>/icp.json` (ICP definition)
+- `clients/<client-name>/icp.json` (ICP definition + `messaging_angles` used to pick a per-prospect angle)
+
+If `messaging_angles` is absent from `icp.json` (legacy ICP predating the angles layer), fall back to the pre-angles flow: write sequences without an angle header and note `angles: absent` in the drafting log. Don't halt — legacy clients still work.
 
 `COPY_RULES_SOURCES.md` sits alongside for traceability — do NOT load it at drafting time (too long). Only read it if the user wants to debate a specific rule against its evidence.
 
@@ -60,6 +62,25 @@ Should the emails:
 Any specific phrases to use or avoid?
 ```
 
+### Step 3.5: Pick an angle per prospect
+
+For each prospect (or group of similar prospects), pick **one** angle from `icp.json.messaging_angles`. The picker is interpretive, not formulaic — read the prospect's title + signals + score_reasoning and choose the angle whose `hypothesis` best matches.
+
+Heuristics (not rules — override when the prospect clearly fits a different slice):
+- Finance titles (CFO, VP Finance, Controller) → usually `cost_reduction`.
+- Engineering/platform leadership (CTO, VP Eng, Head of Platform) → usually `speed_to_ship` unless signals say otherwise.
+- Security, compliance, or risk titles → `risk_mitigation`.
+- Strong signal of a named competitor being ripped out or a losing incumbent → `competitive_displacement` if it's in the angle set.
+- Recent hiring freeze, layoff, or "do more with less" signal → `hiring_freeze_efficiency` if in the set.
+
+When two angles both seem to fit: pick the one whose `proof_shape` you can actually satisfy for this prospect from the enrichment + signals data. No point picking `cost_reduction` if you have no dollar-denominated proof to cite.
+
+When no angle fits: flag to the user rather than forcing a bad match. Example: `"<prospect> is a design lead — none of the 3 angles (cost_reduction, speed_to_ship, risk_mitigation) fit. Skip this prospect, or want me to propose a new angle for the ICP?"`
+
+Record the picked angle in two places:
+1. In the sequence file header (see Step 6, the `Angle:` field).
+2. In the drafting log (Step 8, per-prospect or per-segment).
+
 ### Step 4: Write the sequences
 
 For each prospect (or group of similar prospects), write the full sequence **against the rules in `COPY_RULES.md`**. That file is the drafting spec — don't try to remember the rules from memory, read them.
@@ -98,7 +119,7 @@ The real personalization (the hook, the signal reference) must be written specif
 
 ### Step 5: Group similar prospects
 
-If multiple prospects share the same signal or profile (e.g., all are CTOs at Series B fintech companies), you can write one template for the group and customize the opening line per person. Flag this to the user:
+If multiple prospects share the same signal or profile (e.g., all are CTOs at Series B fintech companies), you can write one template for the group and customize the opening line per person. Grouping by angle is a natural segmentation — one `_SEGMENT_<angle_name>_template.md` per angle often maps cleanly onto the prospect set. Flag this to the user:
 
 ```
 I can write:
@@ -129,6 +150,7 @@ Each file format:
 
 **Prospect:** <name>, <title> at <company>
 **Score:** <icp_score>
+**Angle:** <angle_name> — <one-sentence why this angle for this prospect>
 **Signal:** <what triggered the outreach>
 **Email:** <email>
 
@@ -164,6 +186,7 @@ Before showing drafts to the user, re-read every email against `COPY_RULES.md`. 
 7. **Signature.** `<first_name>\n<role> @ <domain>`, not a bare first name?
 8. **Mobile test.** Would this fit on a phone screen without scrolling?
 9. **Aloud test.** Read it in your head as if it arrived from a stranger. Does any sentence exist only to scaffold the pitch? Delete it.
+10. **Angle alignment.** Does the email body actually express the chosen angle? A prospect tagged `cost_reduction` whose email talks about shipping velocity is mis-angled — either rewrite the body or change the angle tag, don't let them drift.
 
 Fix violations before the review gate. If a rule conflicts with the client's voice (e.g., permission-ask feels weak for this founder), leave it and flag the tradeoff to the user — don't pretend the rule is absolute. Log which rules you applied vs bent in the drafting log.
 
@@ -204,6 +227,8 @@ Write to `clients/<client-name>/logs/sequences.log.md`:
 - **Voice:** <description>
 - **Rules applied:** (list key COPY_RULES.md rules that shaped these drafts, e.g. timeline-hook opener, permission-ask CTA, 3-7-7 cadence)
 - **Rules bent (and why):** (list any rules deliberately broken for this client's voice or persona — e.g. "used direct CTA over permission-ask for founder audience who prefers directness")
+- **Angles used:** (distribution — e.g. `cost_reduction: 8, speed_to_ship: 12, risk_mitigation: 4, unmatched: 1`, or `absent` for legacy ICPs without messaging_angles)
+- **Unmatched prospects:** (list any where no angle fit and sequence was skipped or flagged)
 - **Output:** clients/<client-name>/sequences/
 - **Status:** User reviewing
 ```
