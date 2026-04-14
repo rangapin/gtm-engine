@@ -35,7 +35,11 @@ The file system IS the state. No globals, no hidden context between skills.
 Not every step deserves a full review gate. The 7-gate sprawl the chain grew into is partly cargo-cult safety — review-everything theater that slows iteration without adding protection. Tier gates by stakes:
 
 - **Silent (auto-run, no gate):** `campaign-init`, `research-client`, `icp-define`. Cheap, reversible, no API spend, no external writes. Output lands in files the user can edit before the next step.
-- **Budget gate (before credit/bandwidth-spending):** one gate covers `prospect` + `gather-signals` + `enrich-and-score`. Phrased as an estimate: "About to spend ~N Apollo credits on M prospects matching this ICP. Proceed?" for Apollo-backed steps, or "About to do N fetches, ~M minutes" for `gather-signals`. Don't gate these independently when they run back-to-back — the decision is joint. `gather-signals` is free-API but latency-visible, so same discipline applies.
+- **Budget gate, two halves (preview + spend):**
+  - **Half 1 — preview (end of `/prospect`):** User sees the actual top-10 rows from `prospects.csv`. No credits spent yet. User can edit `prospects.csv` to trim rows — this *is* the shortlist, no separate skill needed.
+  - **Half 2 — spend (start of `/enrich-and-score`):** Gate reads the live row count (post-edit) and confirms the Apollo spend. Accepts `subset <N>` for partial enrichment.
+  - `/gather-signals` sits between the two halves and has its own soft gate (free-API but latency-visible). Don't collapse it into either half — different cost shape.
+  - Rationale: the original single pre-prospect gate asked the user to approve a credit spend without seeing the data they'd be spending on. Splitting lets real rows inform the spend decision.
 - **Quality gate (after `draft-sequences`):** the irreversible-copy-to-real-prospects gate. Full recap view: brief summary, ICP one-pager, prospect count + top-10 rows, 3 sample sequences inline. This is where the user actually reviews.
 - **Irreversible gate (before `activate`):** paused-first reminder, final go. No bulk activity before this.
 
