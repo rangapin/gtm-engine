@@ -8,12 +8,12 @@ A Claude Code project — no build, no tests, no runtime. The "code" is skill de
 
 ## Skills
 
-Live at `.claude/skills/<skill-name>/SKILL.md`. Eleven skills:
+Live at `.claude/skills/<skill-name>/SKILL.md`. Twelve skills:
 
 - `campaign-run` — full-chain playbook; invokes the seven pipeline skills with review gates between each, then `/critique`
 - `campaign-status` — read-only inspector; reports which steps each client has completed and the next recommended step
 - `critique` — post-run per-step quality rating; output (`clients/<client>/critique.md`) is the eval signal for iterating on the skills
-- Pipeline: `campaign-init` → `research-client` → `icp-define` → `prospect` → `enrich-and-score` → `draft-sequences` → `activate` → `capture-results`
+- Pipeline: `campaign-init` → `research-client` → `icp-define` → `prospect` → `gather-signals` → `enrich-and-score` → `draft-sequences` → `activate` → `capture-results`
 
 ## The skill contract
 
@@ -35,7 +35,7 @@ The file system IS the state. No globals, no hidden context between skills.
 Not every step deserves a full review gate. The 7-gate sprawl the chain grew into is partly cargo-cult safety — review-everything theater that slows iteration without adding protection. Tier gates by stakes:
 
 - **Silent (auto-run, no gate):** `campaign-init`, `research-client`, `icp-define`. Cheap, reversible, no API spend, no external writes. Output lands in files the user can edit before the next step.
-- **Budget gate (before credit-spending):** one gate covers `prospect` + `enrich-and-score`. Phrased as an estimate: "About to spend ~N Apollo credits on M prospects matching this ICP. Proceed?" Don't gate these independently — the decision is joint.
+- **Budget gate (before credit/bandwidth-spending):** one gate covers `prospect` + `gather-signals` + `enrich-and-score`. Phrased as an estimate: "About to spend ~N Apollo credits on M prospects matching this ICP. Proceed?" for Apollo-backed steps, or "About to do N fetches, ~M minutes" for `gather-signals`. Don't gate these independently when they run back-to-back — the decision is joint. `gather-signals` is free-API but latency-visible, so same discipline applies.
 - **Quality gate (after `draft-sequences`):** the irreversible-copy-to-real-prospects gate. Full recap view: brief summary, ICP one-pager, prospect count + top-10 rows, 3 sample sequences inline. This is where the user actually reviews.
 - **Irreversible gate (before `activate`):** paused-first reminder, final go. No bulk activity before this.
 
@@ -50,7 +50,7 @@ Before starting, check which files exist in `clients/<client>/`. The last file w
 Skills branch on whether an MCP is connected. Do not assume:
 
 - **Apollo** — assumed connected; prospecting and enrichment depend on it.
-- **Exa** — assumed connected; used in research.
+- **Exa** — assumed connected; used in research and in `/gather-signals` for slug discovery on G2, ProductHunt, and LinkedIn company pages. If Exa is absent, those three sources are skipped (logged; not an error).
 - **Clay** — optional; `enrich-and-score` offers it as an add-on.
 - **Attio** — may or may not be connected; `activate` falls back to CSV export.
 - **HeyReach** — LinkedIn channel for `activate`. Good fit when email coverage is patchy (free-tier enrichment) or when the audience is more responsive on LinkedIn than email. Paused-first discipline applies.
@@ -97,6 +97,28 @@ icp_score, score_reasoning, disqualified
 - `icp_score`: integer 0-100. Sorted descending in the output file.
 - `score_reasoning`: one-line plain English. Must be human-readable — the user needs to argue with it.
 - `disqualified`: boolean (`true` / `false`). Disqualified rows sort to the bottom with `icp_score=0`.
+
+### `signals.csv` (output of `gather-signals`)
+
+One row per detected signal. Multi-row per company. Keyed to `company_domain`.
+
+```
+company_domain, signal_type, signal_text, source_name, source_url,
+detected_at, confidence, notes
+```
+
+- `signal_type`: closed vocabulary — `product_launch`, `funding`, `hiring_surge`, `leadership_change`, `press_mention`, `community_signal`, `partnership`, `event_sponsorship`, `content_velocity`. Expand vocab when 2+ campaigns surface something that doesn't fit; don't invent types on the fly.
+- `source_name`: one of `hiring_page`, `press_release`, `g2_review`, `github_activity`, `product_hunt`, `reddit_thread`, `company_blog`, `linkedin_company_page`.
+- `confidence`: `high` / `med` / `low`. Source-specific rules in the `gather-signals` SKILL.md source table. Any signal with `detected_at` > 180 days old is forced to `low` regardless of per-source rule.
+- `detected_at`: ISO date (the signal event's date, not the scrape date — scrape date is in the log).
+- `source_url`: direct link to evidence. User-clickable.
+- Sort order: within a `company_domain`, rows ordered by `confidence` desc, then `detected_at` desc. Row 0 per company wins for `/draft-sequences` opener fuel.
+- Dedup rule: within a company, same `signal_type` + >80% text overlap within 7 days are merged (highest confidence wins; other `source_url` appended to `notes` as `"also seen on: <url>"`).
+
+**Consumers:**
+- `/enrich-and-score` reads this file for the "Signal match (0-30)" scoring tier: +10 per high, +5 per med, +2 per low, cap at 30. When absent, signal match = 0 (partial score, not error).
+- `/draft-sequences` will read this file as opener fuel (v2 — not yet implemented). Picks row 0 per company to populate `{{HOOK_SHORT}}` and `{{HOOK_EXPANDED}}`.
+- `/critique` may cite signal-to-reply correlations once `results.csv` + `signals.csv` co-exist for enough campaigns.
 
 ### `sequences/` (output of `draft-sequences`)
 
