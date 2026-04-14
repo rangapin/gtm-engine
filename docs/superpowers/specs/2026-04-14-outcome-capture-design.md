@@ -43,10 +43,11 @@ One row per non-disqualified prospect. Columns:
 
 | Column | Source | Notes |
 |---|---|---|
-| `apollo_person_id` | pre-filled from `prospects.enriched.csv` | join key |
-| `person_name` | pre-filled | readability |
+| `apollo_person_id` | pre-filled from `prospects.enriched.csv` | may be blank for legacy clients; not the primary join key |
+| `person_name` | pre-filled | part of composite join key |
 | `person_email` | pre-filled | readability |
 | `company_name` | pre-filled | readability |
+| `company_domain` | pre-filled | part of composite join key |
 | `icp_score` | pre-filled | needed for tier analysis |
 | `tier` | pre-filled, derived from `icp_score` | High (70+) / Med (40-69) / Low (1-39) — matches `/campaign-status` bands |
 | `channel` | pre-filled from `logs/activate.log.md` | `linkedin` / `email` / `gmail` |
@@ -60,6 +61,8 @@ One row per non-disqualified prospect. Columns:
 **Snapshot semantics:** `tier` is denormalized from `icp_score` at the time of skeleton creation. If scoring is later re-run, `tier` stays on the old value (results.csv is a point-in-time record of what was launched).
 
 **DQ filter:** rows with `disqualified=true` in `prospects.enriched.csv` are excluded from the skeleton.
+
+**Join key (merge-on-rerun):** composite `company_domain + person_name`. Chosen over `apollo_person_id` because legacy `prospects.enriched.csv` files (e.g., `clients/theline/`) predate the `apollo_person_id` column requirement in CLAUDE.md. Composite key works across both legacy and new clients.
 
 ## `/capture-results` — behavior
 
