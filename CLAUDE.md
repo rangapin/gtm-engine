@@ -8,12 +8,12 @@ A Claude Code project — no build, no tests, no runtime. The "code" is skill de
 
 ## Skills
 
-Live at `.claude/skills/<skill-name>/SKILL.md`. Ten skills:
+Live at `.claude/skills/<skill-name>/SKILL.md`. Eleven skills:
 
 - `campaign-run` — full-chain playbook; invokes the seven pipeline skills with review gates between each, then `/critique`
 - `campaign-status` — read-only inspector; reports which steps each client has completed and the next recommended step
 - `critique` — post-run per-step quality rating; output (`clients/<client>/critique.md`) is the eval signal for iterating on the skills
-- Pipeline: `campaign-init` → `research-client` → `icp-define` → `prospect` → `enrich-and-score` → `draft-sequences` → `activate`
+- Pipeline: `campaign-init` → `research-client` → `icp-define` → `prospect` → `enrich-and-score` → `draft-sequences` → `activate` → `capture-results`
 
 ## The skill contract
 
@@ -55,6 +55,7 @@ Skills branch on whether an MCP is connected. Do not assume:
 - **Attio** — may or may not be connected; `activate` falls back to CSV export.
 - **HeyReach** — LinkedIn channel for `activate`. Good fit when email coverage is patchy (free-tier enrichment) or when the audience is more responsive on LinkedIn than email. Paused-first discipline applies.
 - **Smartlead** — email channel for `activate` via the LeadMagic MCP (`npx smartlead-mcp-by-leadmagic install`, needs `SMARTLEAD_API_KEY`). Paid product — skip if not worth the cost yet.
+- **Instantly** — email channel for `activate` via the Instantly v2 API MCP. Current preferred email sender for prod runs. Paused-first discipline applies.
 - **Apollo Sequences** — email fallback when Smartlead isn't available, but requires a paid Apollo plan (free tier blocks sequence APIs).
 
 When all email paths are missing, HeyReach alone is a legitimate single-channel activation. When everything is missing, `activate` falls back to CSV export. The skill presents options rather than failing.
@@ -114,6 +115,25 @@ clients/<client>/sequences/
 ```
 
 Underscore prefix on segment templates sorts them to the top of the directory listing.
+
+### `results.csv` (output of `capture-results`, user-filled)
+
+One row per non-disqualified prospect from `prospects.enriched.csv`. Pre-filled columns come from the skill; outcome columns are blank and the user fills them as outcomes land.
+
+```
+apollo_person_id, person_name, person_email, company_name, company_domain,
+icp_score, tier, channel,
+sent_at, replied, replied_on_step, bounced, meeting_booked, outcome_notes
+```
+
+- `tier`: derived from `icp_score` at skeleton-creation time. `High` (≥70), `Med` (40-69), `Low` (1-39). Snapshot — does not update if the prospect is re-scored later.
+- `channel`: `linkedin` / `email` / `gmail` — derived from the `activate.log.md` body via keyword scan (`heyreach`/`linkedin` → linkedin, `smartlead`/`instantly` → email, `gmail` → gmail). If ambiguous, the skill prompts the user.
+- `replied`: `true` / `false` / blank. Blank means no outcome recorded yet; `false` means "sent, no reply". Both count as "outcome_filled" for fill-rate calculations.
+- `replied_on_step`: integer step number (1..N) if `replied=true`, else blank.
+- `apollo_person_id`: may be blank for clients whose `prospects.enriched.csv` predates that column. The skill uses composite key `company_domain + person_name` for merge-on-rerun.
+- Join key with `prospects.enriched.csv`: `company_domain + person_name` (robust to `apollo_person_id` absence).
+
+`/critique` reads this file when present and adds an "Outcome signal" section with reply-rate-by-tier and replies-by-step findings. When absent, `/critique` behaves as before.
 
 ### Canonical sequence tokens
 
