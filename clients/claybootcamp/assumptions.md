@@ -1,0 +1,1 @@
+icp-define: angles retro-filled on 2026-04-14 with [career_pivot_outcome, network_not_youtube, fast_launch] — customized for claybootcamp's career-change bootcamp offer (SaaS defaults didn't fit). Review before next draft-sequences run.
