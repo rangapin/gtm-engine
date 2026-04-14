@@ -74,6 +74,60 @@ Each client is a folder under `clients/`. Skills read and write only within the 
 
 Every skill reads from and writes to the files below. Column lists live here, not in individual skill files — update here when adding a column and the skills stay in sync.
 
+### `icp.json` (output of `icp-define`)
+
+```json
+{
+  "client_domain": "acme.com",
+  "client_name": "acme",
+  "target_industries": ["SaaS", "fintech"],
+  "target_company_sizes": ["51-200", "201-500"],
+  "target_regions": ["United States", "United Kingdom"],
+  "target_titles": ["VP of Engineering", "CTO"],
+  "target_signals": ["Recently raised Series A or B", "Hiring backend engineers"],
+  "disqualifiers": ["Under 20 employees", "Agencies"],
+  "offer_summary": "One sentence about what they sell",
+  "value_proposition": "One sentence about why someone buys",
+  "messaging_angles": [
+    {
+      "name": "cost_reduction",
+      "hypothesis": "CFO-adjacent buyers under 2026 margin pressure",
+      "pain_hooks": [
+        "AWS bill grew faster than headcount",
+        "finance pushing back on next renewal"
+      ],
+      "proof_shape": "dollar-denominated outcome from a comparable customer"
+    },
+    {
+      "name": "speed_to_ship",
+      "hypothesis": "Eng leaders where shipping velocity is the board-level KPI",
+      "pain_hooks": [
+        "platform team spending >30% on internal tooling",
+        "PR merge-to-prod latency creeping past a day"
+      ],
+      "proof_shape": "deploy-frequency or lead-time delta"
+    },
+    {
+      "name": "risk_mitigation",
+      "hypothesis": "Security/compliance-sensitive buyers (regulated, post-incident, or pre-audit)",
+      "pain_hooks": [
+        "SOC2 renewal looming",
+        "recent public incident in their sector"
+      ],
+      "proof_shape": "named compliance framework or incident-avoidance outcome"
+    }
+  ]
+}
+```
+
+- `messaging_angles`: exactly 3 angles minimum, 5 maximum. Each angle has:
+  - `name`: snake_case identifier (used as the `angle:` key in sequence file headers and in logs).
+  - `hypothesis`: one sentence describing *which slice of the ICP* this angle lands with. The whole point is that different buyers within the same ICP respond to different framings — don't write angles that would resonate with the entire ICP equally, that defeats the purpose.
+  - `pain_hooks`: 2-3 concrete symptoms the prospect might actually be feeling. These are prompts for the drafter, not copy to lift verbatim.
+  - `proof_shape`: what kind of proof point this angle expects (not the proof itself — that's per-prospect). Disciplines the drafter away from generic case studies.
+- Angles are per-ICP, not per-prospect. `/draft-sequences` picks *which* angle fits each prospect (based on title, signals, score_reasoning) and fills in the specifics.
+- Default set when the user has no strong opinion: `cost_reduction`, `speed_to_ship`, `risk_mitigation`. Replace or extend with client-specific angles when the brief makes them obvious (e.g., competitive_displacement, compliance_deadline, hiring_freeze_efficiency, category_creation).
+
 ### `prospects.csv` (output of `prospect`)
 
 ```
