@@ -15,6 +15,9 @@ Read:
 - `clients/<client-name>/prospects.csv` (the prospect list from /prospect)
 - `clients/<client-name>/icp.json` (for scoring)
 - `clients/<client-name>/brief.md` (for context on the client)
+- `clients/<client-name>/signals.csv` (optional — from /gather-signals; feeds the signal tier of scoring)
+
+If `signals.csv` is absent, scoring still works — signal match just contributes 0 points per prospect. Not an error. The pipeline gracefully degrades for legacy clients and for campaigns where signal gathering was skipped.
 
 ### Step 2: Enrich contacts
 
@@ -67,14 +70,32 @@ For each enriched prospect, calculate an ICP fit score (0-100) based on:
 - Related title (same department, similar seniority): +15
 - Wrong department or too junior: +0
 
-**Signal match (0-30 points):**
-- Each matching signal from the ICP: +10 (cap at 30)
-- Examples: recent funding, hiring in relevant roles, tech stack match
+**Signal match (0-30 points) — deterministic lookup from signals.csv:**
+
+If `signals.csv` is present, for each prospect:
+1. Filter rows where `company_domain` equals this prospect's company domain.
+2. For each matching signal row, add points by `confidence`:
+   - `high` → +10
+   - `med` → +5
+   - `low` → +2
+3. Sum and cap at 30.
+
+If `signals.csv` is absent or the prospect's company has 0 matching rows, signal match = 0. Not an error — the rest of the score (firmographic, title, disqualifier) stands on its own.
+
+Do NOT attempt implicit signal detection. That job belongs to `/gather-signals`. If you think a signal is missing, the user should re-run `/gather-signals <client>` to refresh the file, not work around it here.
 
 **Disqualifier check:**
 - If any disqualifier matches, set score to 0 and flag as disqualified. Don't waste time on these.
 
-Write a brief `score_reasoning` for each row explaining the score.
+Write a brief `score_reasoning` for each row explaining the score. For the signal-match portion, cite `signals.csv` rather than narrating signals inline.
+
+**Format example (new):**
+
+```
+Industry match (+15); company size 73 in target range (+15); HQ Singapore not in target regions but global brand serving them (+5); Founder title exact (+30); +30 from signals.csv (molchanovs.com): 3 signals (2 high, 1 med) — product_launch, event_sponsorship, hiring_surge
+```
+
+**Do NOT inline signal_text** (no more `"sponsors CMAS+AIDA events, launched carbon freediving fins Feb 2026, +41% YoY headcount growth"` in score_reasoning). The full signal details live in `signals.csv`; score_reasoning cites count + tier distribution + types. User clicks through to `signals.csv` for evidence.
 
 ### Step 5: Write enriched output
 
@@ -140,6 +161,10 @@ Write to `clients/<client-name>/logs/enrich-score.log.md`:
 - **Clay: add-company-data-points** (optional) for tech stack, news, funding
 
 ## Scoring guidelines
+
+**Signal detection is delegated to `/gather-signals`.** This skill does not attempt to discover signals — it reads them from `signals.csv`. This keeps scoring deterministic (same input → same score), keeps signal evidence auditable (each signal has a source_url), and enables downstream reuse (draft-sequences pulls the same signals as opener fuel).
+
+For legacy clients whose prospects.enriched.csv was created before /gather-signals existed: run `/gather-signals <client>` once, then re-run `/enrich-and-score <client>` to refresh scores with signal data. Existing prospects.enriched.csv will be overwritten.
 
 The scoring is intentionally simple. It doesn't need to be a machine learning model. It needs to be:
 - Transparent (the user can read the reasoning and agree or disagree)
