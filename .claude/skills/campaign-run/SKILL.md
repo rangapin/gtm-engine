@@ -9,18 +9,26 @@ When the user runs `/campaign-run <domain>`:
 
 ## Overview
 
-This playbook chains all skills in sequence with **3 tiered gates** (not one-per-step — see CLAUDE.md "Gate tiering"):
+This playbook chains all skills in sequence with **3 tiered gates** — but the Budget tier fires in two halves (preview, then spend). See CLAUDE.md "Gate tiering".
 
 ```
 /campaign-init <domain>
 /research-client <client>    } silent auto-run — no gates
 /icp-define <client>         } (cheap, reversible, no API spend)
     |
-    v  ━━━ GATE 1: Budget ━━━
-    |     "About to spend ~N Apollo credits on M prospects matching this ICP. Proceed?"
+/prospect <client>           — Apollo search is cheap; runs without a pre-gate
     |
-/prospect <client>           } run together — one decision, two steps
-/enrich-and-score <client>   }
+    v  ━━━ GATE 1A: Budget preview ━━━
+    |     Top-10 rows from prospects.csv inline. User edits the CSV to shortlist.
+    |     No credits spent yet.
+    |
+/gather-signals <client>     — soft gate of its own (free-API, latency-visible)
+    |
+    v  ━━━ GATE 1B: Budget spend ━━━
+    |     "~N Apollo credits on M rows in prospects.csv (after edits). Proceed?"
+    |     Accepts: yes / no / subset <top-N>
+    |
+/enrich-and-score <client>
     |
 /draft-sequences <client>
     |
@@ -37,7 +45,9 @@ This playbook chains all skills in sequence with **3 tiered gates** (not one-per
 Done.
 ```
 
-Three gates instead of seven. Silent doesn't mean blind: `clients/<client>/assumptions.md` accumulates one-line assumption statements from each silent step, which the user can skim at any time. If research or ICP is clearly wrong, the user stops the run before Gate 1.
+Three tiers (Budget / Quality / Irreversible), but the Budget tier has a preview half at the end of `/prospect` and a spend half at the start of `/enrich-and-score`. The preview half is what lets the user see real rows *before* approving credit spend.
+
+Silent doesn't mean blind: `clients/<client>/assumptions.md` accumulates one-line assumption statements from each silent step, which the user can skim at any time. If research or ICP is clearly wrong, the user stops the run before Gate 1A.
 
 ## How to run
 
@@ -50,15 +60,20 @@ At the start, tell the user:
 ```
 Starting full campaign for <domain>.
 
-8 steps, 3 gates:
+9 steps, 3 tiered gates (Budget tier has a preview half + spend half):
 - Silent (auto-run): init, research-client, icp-define
-- Gate 1 — Budget: before prospect + enrich-and-score (Apollo credits)
-- Gate 2 — Quality: after draft-sequences (full recap, the critical gate)
-- Gate 3 — Irreversible: before activate (paused-first reminder)
-- Then: critique to capture eval signal
+- /prospect — runs silent (Apollo search is cheap)
+- Gate 1A — Budget preview: real top-10 rows; edit prospects.csv to shortlist
+- /gather-signals (free, soft gate)
+- Gate 1B — Budget spend: Apollo credits on the post-edit row count
+- /enrich-and-score
+- /draft-sequences
+- Gate 2 — Quality: full recap (the critical gate)
+- Gate 3 — Irreversible: paused-first reminder
+- /activate, then /critique
 
 Silent steps write to clients/<client>/assumptions.md — skim any time.
-Stop me before Gate 1 if the ICP is off.
+Stop me before Gate 1A if the ICP is off.
 
 Ready?
 ```
@@ -88,11 +103,16 @@ You can also run each step separately:
 
 Three gates, each with a specific shape:
 
-**Gate 1 — Budget** (before prospect + enrich-and-score)
-- State the credit estimate: "~N Apollo credits on M prospects matching this ICP."
-- If the ICP looks off (check `assumptions.md` from the silent steps), surface it here before spending.
-- Accept edits to the ICP. Proceed only on explicit "yes."
-- This gate covers BOTH prospect and enrich-and-score — don't re-gate after prospecting unless the prospect list is clearly wrong, in which case stop and ask.
+**Gate 1A — Budget preview** (at the end of `/prospect`)
+- Real top-10 rows from `prospects.csv` shown inline. Not a summary, not counts — actual companies + contacts.
+- No credits spent yet. The user can edit `prospects.csv` (delete rows to shortlist) before continuing.
+- Proceed on explicit "yes" or an edit instruction (e.g., "drop rows 3, 7, 12 and continue").
+- If the prospect list is clearly wrong (ICP drift), stop and re-run `/prospect` with tighter filters.
+
+**Gate 1B — Budget spend** (at the start of `/enrich-and-score`)
+- State the credit estimate reading the *live* `prospects.csv` row count (post-edit).
+- Accepts: `yes` / `no` / `subset <top-N>` for partial enrichment.
+- Between 1A and 1B, `/gather-signals` runs with its own soft gate (free-API, latency-visible). Don't collapse it into either half.
 
 **Gate 2 — Quality** (after draft-sequences, before activate)
 - Full recap in one view: brief summary (3 bullets), ICP one-pager, prospect count + top-10 scored rows, 3 sample sequences inline.
@@ -104,7 +124,7 @@ Three gates, each with a specific shape:
 - Paused-first reminder: "Campaigns will be created paused/unsent. You resume in the sequencer UI."
 - Final go/no-go. Proceed only on explicit "yes."
 
-Never skip Gate 2 or Gate 3 even if the user says "just do everything." Gate 1 can be bypassed only if the user has explicitly pre-authorized credit spend for this run.
+Never skip Gate 2 or Gate 3 even if the user says "just do everything." Gate 1B (spend) can be bypassed only if the user has explicitly pre-authorized credit spend for this run. Gate 1A (preview) is cheap — don't skip it; it's the single best defense against wasting credits on a bad list.
 
 ## Resuming a partial run
 
