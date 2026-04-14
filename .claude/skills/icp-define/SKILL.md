@@ -73,6 +73,43 @@ Once confirmed, write `clients/<client-name>/icp.json`:
 }
 ```
 
+### Step 4.5: Draft messaging angles
+
+Before confirming, propose 3 messaging angles for this ICP. Angles are distinct framings that different slices of the ICP respond to — not restatements of the value prop in different words.
+
+Present it as a short proposal, not a JSON dump:
+
+```
+Three messaging angles for <client-name>:
+
+1. **Cost reduction** — lands with <which slice>, pain shows up as <symptom>, proof shape: <what kind of outcome>
+2. **Speed to ship** — lands with <which slice>, pain shows up as <symptom>, proof shape: <what kind of outcome>
+3. **Risk mitigation** — lands with <which slice>, pain shows up as <symptom>, proof shape: <what kind of outcome>
+
+Each angle becomes a distinct sequence template. /draft-sequences picks the right angle per prospect.
+
+Keep these three? Swap any for something more specific to <client-name>?
+(Common alternates: competitive_displacement, hiring_freeze_efficiency, compliance_deadline, category_creation)
+```
+
+The user may:
+- Accept the three defaults.
+- Replace one or more with client-specific angles the brief makes obvious.
+- Ask for a different count (minimum 3, maximum 5).
+
+**Calibration rule:** If two proposed angles would resonate with the same slice of the ICP (e.g., cost_reduction and speed_to_ship both aimed at engineering leaders under margin pressure), collapse them or replace one. Overlapping angles defeat the purpose — the drafter needs distinct slices to pick between.
+
+Once confirmed, append `messaging_angles` to the `icp.json` file per the schema in `CLAUDE.md` → File schemas → `icp.json`. Each angle has `name` (snake_case), `hypothesis` (one sentence), `pain_hooks` (2-3 symptoms), `proof_shape` (one phrase).
+
+Record the angle set in `clients/<client-name>/assumptions.md` as a single line:
+```
+icp-define: angles = [cost_reduction, speed_to_ship, risk_mitigation] — defaults accepted.
+```
+or, if customized:
+```
+icp-define: angles = [competitive_displacement, compliance_deadline, hiring_freeze_efficiency] — brief called out SOC2 renewal cycle and Q2 hiring freeze.
+```
+
 ### Step 5: Confirm
 
 ```
@@ -92,6 +129,7 @@ Write to `clients/<client-name>/logs/icp.log.md`:
 - **Industries:** <list>
 - **Sizes:** <list>
 - **Titles:** <list>
+- **Angles:** <names only, e.g. cost_reduction, speed_to_ship, risk_mitigation>
 - **Status:** User approved
 ```
 
@@ -106,3 +144,4 @@ This skill uses the brief (already gathered) and user input. No MCP calls.
 - Signals matter more than firmographics. "Recently raised Series B" is more actionable than "51-200 employees."
 - Disqualifiers save time. Be explicit about who NOT to target.
 - The offer summary and value proposition should use the client's own language from their website, not generic marketing speak.
+- Don't let two angles target the same slice of the ICP. They need to pick different slices, or they collapse into one angle.
