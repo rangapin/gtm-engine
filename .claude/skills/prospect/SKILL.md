@@ -27,15 +27,7 @@ Map ICP fields to Apollo filters:
 
 Start with `per_page: 25` and `page: 1`. You can paginate for more results if the user wants a bigger list.
 
-**Important:** Apollo search consumes credits. Before running, tell the user:
-
-```
-I'll search Apollo for companies matching your ICP. This will use Apollo credits.
-Searching for: <summarize the filters>
-Estimated results: 25 companies (first page)
-
-Proceed?
-```
+**Cost note:** Apollo company + people search uses a small number of search-credits per page (not the high-cost `apollo_people_match` credits — those fire in enrichment). Proceed without a gate; the real budget decision comes after prospecting when the user sees the list.
 
 ### Step 3: Search for people at those companies
 
@@ -54,31 +46,43 @@ Write `clients/<client-name>/prospects.csv`. Schema is defined in `CLAUDE.md` ("
 
 Fill `icp_match_notes` with a brief note on why this company/person matches the ICP. For example: "Series B fintech, 120 employees, CTO - matches size + industry + title."
 
-### Step 5: Review gate
+### Step 5: Preview + handoff (Gate 1 of 2 for the budget decision)
 
-Present a summary to the user:
+This is the **preview half** of the budget gate. The user sees real data here; the credit-spend decision is deferred to `/enrich-and-score`'s Step 2 ("Gate 2 of 2").
+
+Present inline — not a summary, not counts, the actual top rows:
 
 ```
-Found <N> companies and <M> contacts matching the ICP for <client-name>.
+Prospects found for <client-name>: <N> companies, <M> contacts.
+Saved to clients/<client-name>/prospects.csv.
 
-Top companies:
-1. <Company A> - <industry>, <size> employees, <location>
-   Contacts: <Name> (<Title>), <Name> (<Title>)
-2. <Company B> - ...
-3. ...
+Top 10 rows (sorted by ICP-match strength of icp_match_notes):
 
-Full list saved to clients/<client-name>/prospects.csv
+  1. <Company A> — <industry>, <size> emp, <location>
+     <Person Name>, <Title>  · icp_match_notes: <note>
+  2. <Company B> — ...
+  ...
+  10. ...
 
-Review the list. You can:
-- Remove companies that don't fit
-- Add specific companies by domain
-- Adjust filters and re-run
-- Approve and move to enrichment
+Next: /gather-signals then /enrich-and-score.
+Enrichment will cost ~<M> Apollo credits (1 per contact).
+
+Before continuing, you can:
+- Edit prospects.csv directly (delete rows you don't want to pay to enrich — this IS the shortlist)
+- Add specific companies by domain (re-run /prospect with new filters, or hand-add rows)
+- Adjust the ICP and re-run /prospect
+- Proceed to /gather-signals
 
 What would you like to do?
 ```
 
-Wait for the user to review. If they want to remove or add prospects, update the CSV accordingly.
+**User-editing is the shortlist.** No separate `/shortlist` skill. The user deletes rows from `prospects.csv` that they don't want enriched. The row count at enrichment time is what they actually pay for. This is cheaper and more ergonomic than a structured shortlist step.
+
+Wait for explicit direction. Common responses:
+- "Looks good, continue" → confirm, suggest `/gather-signals <client>`.
+- "Drop rows 3, 7, 12" → open prospects.csv, delete those rows, confirm, re-print the top 10.
+- "Add <domain>" → call Apollo company search for that domain, append to prospects.csv.
+- "Re-run with narrower filter" → ask what to narrow on, re-enter Step 2.
 
 ### Step 6: Log
 
@@ -93,7 +97,8 @@ Write to `clients/<client-name>/logs/prospect.log.md`:
 - **Companies found:** <N>
 - **Contacts found:** <M>
 - **Output:** clients/<client-name>/prospects.csv
-- **Status:** User reviewed
+- **Status:** Preview shown (Gate 1 of 2) — user <approved | edited | re-ran>
+- **Rows removed at preview:** <N> (if user trimmed prospects.csv)
 ```
 
 ## Tools used
