@@ -28,16 +28,23 @@ For each person in the prospect list, use **Apollo people enrichment** (`apollo_
 - Current title (verified)
 - Company details
 
-**Important:** This consumes Apollo credits per person. Before running, tell the user:
+**Important — Gate 2 of 2 (spend decision).** The preview half of the budget gate fired at the end of `/prospect`. This is where credits actually burn. Read the current row count from `prospects.csv` (not the count shown at preview time — the user may have trimmed rows in between).
+
+Present:
 
 ```
-I'll enrich <N> contacts via Apollo. This uses 1 credit per person.
-Total estimated credits: <N>
+Enrichment budget for <client-name>:
+  Rows in prospects.csv: <N>  (after user edits since /prospect preview)
+  Apollo credits per row: 1
+  Total credits: <N>
+  Also runs: /gather-signals upstream if signals.csv is absent or stale (no extra Apollo cost)
 
-Proceed?
+Proceed with enrichment? (yes / no / subset <top-N>)
 ```
 
-**Batch wisely:** Process contacts in batches. If the list is large (50+), suggest starting with the top 20-30 and enriching more later.
+If the user says `subset <N>`, enrich only the top N rows by their current order in `prospects.csv` (which reflects the user's curation). The rest remain in `prospects.csv` unfilled — they can be enriched later by re-running.
+
+If the user says `no`, stop and record the decision in `assumptions.md`. No partial state — nothing is enriched.
 
 For each contact, call `apollo_people_match` with:
 - `first_name` + `last_name` (from prospects.csv)
