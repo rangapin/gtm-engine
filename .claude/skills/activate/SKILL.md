@@ -16,6 +16,41 @@ Read:
 - `clients/<client-name>/sequences/` (the approved email sequences)
 - `clients/<client-name>/icp.json` (for reference)
 
+### Step 1.5: Dedup against the global contacted ledger
+
+Before anything touches real channels, check this client's prospect list against `clients/_contacted.csv` — the global contacted ledger. This is the only skill that reads across client folders, specifically to prevent re-contacting someone on a different campaign or a re-run.
+
+1. **Read the ledger.** If `clients/_contacted.csv` doesn't exist, treat as empty and skip to Step 2 (first-ever activation).
+
+2. **Build a match key per prospect** in this client's `prospects.enriched.csv` (filter to non-disqualified rows above the activation threshold). Use the first non-empty key in priority order:
+   - `apollo_person_id`
+   - `person_email`
+   - `person_linkedin`
+   - `company_domain|person_name` (composite fallback for legacy rows)
+
+3. **Match against the ledger** using the same priority. A prospect is a dupe if any key matches any ledger row's corresponding column.
+
+4. **If dupes exist, show the user:**
+
+   ```
+   Dedup check: N of M prospects are already in the global contacted ledger.
+
+   [Up to 10 rows: person_name, title, company | prior client | channel | date]
+
+   Default: exclude all dupes from this campaign.
+
+   Options:
+   - (press Enter) Exclude all — recommended
+   - Override specific rows (list numbers to keep, e.g. "2, 5, 9")
+   - Type "override all" to contact everyone, ignoring prior contact (reputation risk)
+   ```
+
+5. **Apply the user's choice.** The filtered set is the working list for every step below. Step 2's pre-flight counts reflect the post-dedup count.
+
+6. **If zero dupes**, say one line ("Dedup check: 0 of N prospects already contacted") and continue — no prompt.
+
+7. **Record the dedup outcome** for Step 8's log: `dedup_blocked: N; dedup_overridden: N; dedup_key_hits: {apollo_id: N, email: N, linkedin: N, composite: N}`.
+
 ### Step 2: Pre-flight check
 
 Before pushing anything, run through this checklist with the user:
@@ -213,6 +248,28 @@ Next steps:
 - Re-run /prospect + /enrich-and-score in 2-4 weeks for fresh prospects
 ```
 
+### Step 7.5: Append to the contacted ledger
+
+After the push is confirmed successful (CRM + sequencer reported OK, campaign visible in the sender UI), append one row per actually-activated prospect per channel to `clients/_contacted.csv`. This is what the *next* `/activate` (for any client) will dedupe against.
+
+1. **Create the file with headers if it doesn't exist:**
+   ```
+   apollo_person_id,person_email,person_linkedin,company_domain,person_name,client_name,activated_at,channel,campaign_id
+   ```
+
+2. **For each activated prospect**, append one row per channel used (a prospect activated on LinkedIn AND email generates two rows). Fields come from `prospects.enriched.csv` plus activation metadata:
+   - `apollo_person_id`, `person_email`, `person_linkedin`, `company_domain`, `person_name` — from the enriched row (blank if absent; that's fine)
+   - `client_name` — current client
+   - `activated_at` — ISO 8601, now
+   - `channel` — `linkedin` / `email` / `gmail`
+   - `campaign_id` — HeyReach or Smartlead campaign ID/name; blank for Gmail drafts
+
+3. **Include overridden dupes.** If the user overrode a dedup warning in Step 1.5 and re-contacted a prospect already in the ledger, that prospect gets a fresh row here — the ledger records every intent-to-contact, not just first-touch.
+
+4. **Exclude dedup-blocked prospects.** They weren't activated, so they don't get a new row. Their original ledger entry stands.
+
+5. **Append-only.** Never rewrite or dedupe historical rows. The ledger is a permanent audit trail.
+
 ### Step 8: Log
 
 Write to `clients/<client-name>/logs/activate.log.md`:
@@ -220,6 +277,13 @@ Write to `clients/<client-name>/logs/activate.log.md`:
 ```markdown
 # Activation Log
 - **Date:** <timestamp>
+- **Dedup (Step 1.5):**
+  - Prospects considered: <M>
+  - Dupes found in `_contacted.csv`: <N>
+  - Dupes excluded: <N>
+  - Overridden by user: <N>
+  - Key hits: apollo_id=<n>, email=<n>, linkedin=<n>, composite=<n>
+- **Ledger rows appended (Step 7.5):** <N>
 - **CRM:** Attio
   - Companies pushed: <N>
   - Contacts pushed: <N>
@@ -251,7 +315,7 @@ Write to `clients/<client-name>/logs/activate.log.md`:
 This skill handles irreversible actions. Extra caution:
 
 1. **Always confirm before pushing.** Never auto-push to CRM or any sequencer.
-2. **Check for duplicates.** Use `run_dedupe: true` in Apollo. Check Attio for existing records. Smartlead deduplicates by email; HeyReach deduplicates by LinkedIn URL within a campaign.
+2. **Check for duplicates.** Step 1.5 runs global dedup against `clients/_contacted.csv` before pre-flight — this is the primary defense against re-contacting someone across clients or re-runs. Platform-level dedup is the second line: `run_dedupe: true` in Apollo, Attio upsert by domain/email, Smartlead by email, HeyReach by LinkedIn URL within a campaign.
 3. **Always create paused / unsent.** Every HeyReach campaign, Smartlead campaign, Apollo enrollment, and Gmail draft is created in paused/unsent state. The user resumes or sends manually in the respective UI after visual review. No exceptions.
 4. **LinkedIn-specific rails.** Keep daily send volumes within HeyReach's defaults. Warn if the chosen sender account is new (<30 days) or recently restricted. Keep connection-request notes under 300 characters.
 5. **Gmail-specific rails.** The authed Gmail account may not match the client's domain — always call `gmail_get_profile` first and flag a mismatch to the user before creating drafts. Never call `gmail_send` or `gmail_send_draft`; drafts stay unsent until the user sends them from the Gmail UI.

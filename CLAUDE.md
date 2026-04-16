@@ -74,6 +74,8 @@ The quality gate (after `draft-sequences`) and the irreversible gate (before `ac
 
 Each client is a folder under `clients/`. Skills read and write only within the folder for the client name they were invoked with. Never cross-reference data between clients.
 
+**One exception:** `/activate` reads and writes `clients/_contacted.csv` — a global ledger that prevents re-contacting the same person across clients or re-runs. This is the only cross-client file and `/activate` is the only skill that touches it. The underscore prefix sorts it above client folders for visibility.
+
 ## File schemas (single source of truth)
 
 Every skill reads from and writes to the files below. Column lists live here, not in individual skill files — update here when adding a column and the skills stay in sync.
@@ -213,7 +215,33 @@ sent_at, replied, replied_on_step, bounced, meeting_booked, outcome_notes
 - `apollo_person_id`: may be blank for clients whose `prospects.enriched.csv` predates that column. The skill uses composite key `company_domain + person_name` for merge-on-rerun.
 - Join key with `prospects.enriched.csv`: `company_domain + person_name` (robust to `apollo_person_id` absence).
 
-`/critique` reads this file when present and adds an "Outcome signal" section with reply-rate-by-tier and replies-by-step findings. When absent, `/critique` behaves as before.
+`/critique` is **outcome-first**: it computes `fill_rate` (rows with `replied` non-null / total non-DQ rows) and `campaign_age_days` before asking for ratings. The gate:
+
+- Campaign ≥7 days old AND no `results.csv` → `/critique` **blocks** and sends the user to `/capture-results`.
+- Campaign ≥7 days old AND `fill_rate < 50%` → `/critique` **blocks** with the same redirect.
+- Campaign <7 days old → proceeds as "preliminary" (ratings flagged outcome-pending).
+- Campaign not activated → proceeds as "execution-only" (skill execution only, no outcome signal).
+- Fill-rate ≥50% on a >7d campaign → full outcome signal.
+
+When outcome data exists, per-step ratings are **evidence-derived**: `/critique` proposes a cap for each step based on the data (e.g., inverted tier reply rate caps `enrich-and-score` at ≤2; any step with 0 replies across ≥10 sends caps `draft-sequences` at ≤3), and the user confirms or overrides. Overrides upward are marked `*` in the ratings table so they stay visible.
+
+Rationale: outcome-blind ratings pollute the compounding critique signal with vibes. The gate forces the loop to close with real data.
+
+### `clients/_contacted.csv` (global ledger, appended by `/activate`)
+
+Global contacted-prospect ledger. Written by `/activate` after every successful push. Read by the *next* `/activate` run (any client) to dedupe before pre-flight.
+
+```
+apollo_person_id, person_email, person_linkedin, company_domain, person_name,
+client_name, activated_at, channel, campaign_id
+```
+
+- **Match priority** used by `/activate` Step 1.5: `apollo_person_id` → `person_email` → `person_linkedin` → `company_domain|person_name`. First non-empty key is tried against the corresponding ledger column. The composite fallback is for legacy rows whose enrichment predates `apollo_person_id`.
+- `channel`: `linkedin` / `email` / `gmail`. Matches the `/capture-results` channel vocab. One row per prospect per channel — a prospect activated on both LinkedIn and email generates two rows.
+- `campaign_id`: HeyReach / Smartlead campaign ID or name; blank for Gmail drafts.
+- `activated_at`: ISO 8601 timestamp at push time.
+- **Append-only.** Never dedupe or edit historical rows — repeated contact attempts to the same person (even from the same client) are signal we want to preserve.
+- **Override semantics:** if the user explicitly overrides a dedup warning in Step 1.5 and re-contacts someone already in the ledger, that override IS recorded as a new row. The ledger reflects intent-to-contact, not just first-touch.
 
 ### Canonical sequence tokens
 

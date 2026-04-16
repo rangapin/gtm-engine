@@ -94,7 +94,11 @@ For each prospect (or group of similar prospects), write the full sequence **aga
 - Angle-shift every follow-up. Do not repeat Email 1's pitch.
 - Persona-calibrate: C-suite under 50 words + outcome-led; VPs connect strategy to mechanism; ICs/technical use operational language; finance wants numbers, no adjectives.
 - Sign-off: `<first_name>\n<role> @ <domain>`. Not a bare first name.
-- Forbidden words (AI tells): impressed, innovative, streamline, leverage, delighted, cutting-edge, game-changing, revolutionary, "I hope this email finds you well", "I came across your profile", "quick question" (subject), "I'd love to pick your brain".
+- Forbidden words and phrases (AI tells — full list in `COPY_RULES.md`): impressed, innovative, streamline, leverage, delighted, cutting-edge, game-changing, revolutionary, "I hope this email finds you well", "I came across your profile", "quick question" (subject), "I'd love to pick your brain", **"Worth a look?" / "Worth exploring?" / "Worth [anything]?" as CTA**, **"Different angle:" as Email 2 opener**, **"Closing the loop" as breakup opener**, **"We can be live in [X]" speed-to-launch claims in Email 1**, **"Most [X] teams…" generalization openers**, **"[Product] is how [Company] does [Thing]" SaaS-pitch construction**.
+- CTA variety: never reuse the same CTA construction across emails in a sequence, or across templates in the same client run. Vary form ("Relevant?" / "Useful to dig in?" / plain questions / no CTA at all on insight-only emails).
+- Em-dash cap: ≤1 per email. Rewrite extras with periods or commas.
+- Locale: currency matches prospect region (PLN/€ for PL, $ for US, £ for UK). Pick at `/icp-define` time and hold across every email in the client run.
+- Proof-on-prospect: every email must bridge one proof element to this prospect's specific situation. Logo drops without connective tissue to the prospect don't count.
 
 **Tension awareness.** Several rules in `COPY_RULES.md` conflict in edge cases — e.g., permission-ask CTAs ("not sure if this is relevant, but…") read weak to founders who prefer directness; humor lands for marketing personas but misfires for finance. When rules clash, resolve using the prospect's persona and the client's voice, and flag the tradeoff at the review gate rather than picking one rule silently.
 
@@ -179,7 +183,7 @@ Before showing drafts to the user, re-read every email against `COPY_RULES.md`. 
 
 1. **Length.** Word count ≤100, Email 1 ideally ≤50. If over, cut.
 2. **Subject line.** Lowercase? ≤5 words? Prospect-specific (not generic category)? No fake `Re:`?
-3. **Forbidden words.** Grep the body for: impressed, innovative, streamline, leverage, delighted, cutting-edge, game-changing, revolutionary, "hope this email finds you well", "came across your profile", "quick question" (as subject), "pick your brain". Any hit → rewrite that line.
+3. **Forbidden words and phrases.** Grep the body against the full Forbidden list in `COPY_RULES.md`. Minimum hit-list: impressed, innovative, streamline, leverage, delighted, cutting-edge, game-changing, revolutionary, "hope this email finds you well", "came across your profile", "quick question" (as subject), "pick your brain", **"worth a look", "worth exploring", "worth comparing" (as CTA), "different angle:", "a different angle:", "different framing:" (as opener), "closing the loop" (as breakup opener), "we can be live", "we can deploy" (speed-to-launch in Email 1), "most [x] teams", "[Product] is how"**. Any hit → rewrite that line.
 4. **Opener.** First 7 words earn relevance? Timeline hook if a recent signal exists? No "I" as the literal first word of Email 1?
 5. **CTA.** One CTA, permission-asking? No calendar link in Email 1?
 6. **Angle-shift.** Email 2 opens a different angle from Email 1? Email 3 is the qualifying question or insight-first, not "just following up"?
@@ -188,6 +192,13 @@ Before showing drafts to the user, re-read every email against `COPY_RULES.md`. 
 9. **Aloud test.** Read it in your head as if it arrived from a stranger. Does any sentence exist only to scaffold the pitch? Delete it.
 10. **Angle alignment.** Does the email body actually express the chosen angle? A prospect tagged `cost_reduction` whose email talks about shipping velocity is mis-angled — either rewrite the body or change the angle tag, don't let them drift.
 11. **Angle field present.** Does the sequence file header include `**Angle:** <name> — <why>`? If it's missing, add it before delivering the draft. This field is required for downstream critique and outcome correlation.
+12. **Em-dash count.** Count em-dashes (`—`, not hyphens `-`) per email. Cap at 1 per email. Rewrite extras with periods or commas. Two+ em-dashes in a 50-word email is the single strongest AI-voice tell.
+13. **CTA variety across the sequence.** List the CTA phrases across all emails for this prospect (or all templates in the client run). If any two match in construction ("Worth X?" + "Worth Y?", "Interested in X?" + "Interested in Y?"), rewrite one. No sequence should repeat its CTA form.
+14. **Locale consistency.** Check currency symbols used in each email against the client's locale (derived from `icp.json.target_regions` — PL → PLN/€, US → $, UK → £). Mixed currencies across templates in the same run must be unified before delivery.
+15. **Proof-on-prospect bridge.** For each email that names a customer logo (Siemens, Stripe, etc.), check the next sentence ties it to something specific about *this* prospect's situation — company, signal, or named constraint. A logo drop without a bridge ("We work with Siemens and BSH.") must be rewritten or cut.
+16. **Feature-dump check.** For each email, check every sentence: does it describe what the *product does*, or what the *prospect can do that they couldn't do before*? Any feature/capability listing must be rewritten as a prospect-facing outcome. ✗ "Our platform features AI analytics and real-time dashboards." ✓ "Know which deals are closing this quarter without interrogating your reps Friday afternoon."
+17. **Close-on-high-note check.** The last sentence of each email sets the memory the prospect replies from. It must leave them lighter, not pressured. Kill pressure-closers: "please let me know either way," "looking forward to your reply," "awaiting your response," "will you let me know?" Replace with a humble exit, a small useful nugget, or silence. A breakup that says "I'll survive if this isn't for you" outperforms one that says "last chance."
+18. **Timeline signal freshness.** For any opener that references a specific event (funding, hiring, launch, leadership change), confirm the event date is ≤60 days old. If it's older, either find a fresher signal or drop the time-anchored phrasing ("recently," "this week," "just," "after your") — reaching for a stale signal reads worse than no signal.
 
 Fix violations before the review gate. If a rule conflicts with the client's voice (e.g., permission-ask feels weak for this founder), leave it and flag the tradeoff to the user — don't pretend the rule is absolute. Log which rules you applied vs bent in the drafting log.
 
