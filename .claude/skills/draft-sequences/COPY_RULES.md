@@ -29,10 +29,11 @@ Full research this distills: see `COPY_RULES_SOURCES.md`.
 - **Plain text only.** No HTML, no bullet points, no bold, no colors, no images. Humans don't format personal email.
 - **Short paragraphs (1–2 sentences each) with white space between.**
 - **5th-grade reading level.** A-grade emails (per Lavender) at that level lift reply rates 67%.
-- **Three-paragraph "signal → pitch → CTA" skeleton is burned.** Recipients and spam filters now pattern-match it as template. Alternatives:
-  - Two-sentence email (observation + question)
-  - Question-only email (second touch onward)
-  - Insight-first email (non-obvious observation, no pitch)
+- **Three-paragraph "signal → pitch → CTA" skeleton is burned.** Recipients now pattern-match the rhythm even when the words are clean. If every email in a sequence follows HOOK_EXPANDED → proof stat → question, it reads AI regardless of vocabulary.
+  - **Two-sentence email:** observation + question. No proof element needed. *"Your job posting for a RevOps Manager mentions CRM consolidation as a priority. We just finished that exact project for a team your size — worth comparing notes?"*
+  - **Question-only email:** a single well-crafted question, zero pitch. Works as second or third touch, not first. *"How are you handling lead routing now that you're on HubSpot and Salesforce simultaneously?"*
+  - **Insight-first email:** lead with a non-obvious observation or specific data point, then offer to discuss. No pitch at all. *"After talking to 30+ VPs who consolidated from Marketo to HubSpot, the one thing nobody anticipated was attribution breaking silently for 60–90 days. I wrote up the three most common failure modes — want me to send it over?"*
+- **Vary the structure across a sequence.** Email 1 two-sentence, Email 2 insight-first, Email 3 question-only — they shouldn't all have the same rhythm. Tone shifts between emails signal AI generation.
 - **Sign-off format: `<first_name>\n<role> @ <domain>`.** Role+domain on second line, not a bare first name (reads as mass-email).
 
 ## Openers
@@ -67,6 +68,20 @@ Delete on sight. These are the highest-confidence AI-generated markers in 2025:
 - "As a fellow [title]"
 
 Also forbidden: starting any sentence with "I" as the literal first word of Email 1.
+
+**Burned opener patterns (structurally, not just by word choice):**
+
+These used to work and are now anti-signals — they tell the reader it's automated, even when the words are different:
+
+- *"I saw you were hiring for [role]..."* — Every tool auto-detects job postings. The hook must imply a problem; this just states a fact.
+- *"Congrats on the funding round!"* — Every sequencer sends this. If your opener is indistinguishable from 50 others, delete it.
+- *"I noticed you recently [generic milestone]..."* — "Recently" without a date is a tell.
+- *"I have an idea for [Company]..."* — Presumptuous before earning credibility.
+- AI flattery that references a LinkedIn post or blog article without genuine insight — hallucinates ~15% of the time (invents articles the person never wrote); recipients know.
+
+**Relevance vs. personalization:**
+
+Inserting merge fields is not personalization. `"Hi {{FIRST_NAME}}, I noticed {{COMPANY}} is doing great things in {{INDUSTRY}}"` is a template with three filled slots. Relevance means demonstrating you understand *why this message matters to this person right now* — the specific situation they're in, the specific problem it implies, the specific reason you're emailing them and not their 100 closest peers. If the same sentence could plausibly appear in an email to a different prospect with just the name swapped, cut it and start over.
 
 ## Persona calibration
 

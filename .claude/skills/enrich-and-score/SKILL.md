@@ -51,7 +51,19 @@ For each contact, call `apollo_people_match` with:
 - `domain` (company domain from prospects.csv)
 - `organization_name` (company name)
 
-If Apollo returns no match, note it in the output. Don't retry endlessly.
+If Apollo returns no match for an individual contact, note it in the output. Don't retry endlessly.
+
+**Apollo unavailable (trial expired / credits exhausted):** If Apollo throws a credit or plan error, or returns 0 matches across the first 3 contacts (a sign of a plan block rather than genuine misses), switch immediately to the Exa fallback — do not keep burning attempts.
+
+**Exa fallback path:**
+1. For each contact, run an Exa search: `"{first_name} {last_name}" "{company_name}" email` and a second search: `site:linkedin.com/in "{first_name} {last_name}" "{company_name}"`.
+2. Parse visible email addresses from result snippets. Only accept addresses from the prospect's own company domain — discard personal addresses (gmail, etc.).
+3. If Exa finds no email, leave `person_email` blank. Do not hallucinate or guess an email format.
+4. Exa searches are free-tier and don't require Apollo credits.
+
+Notify the user before switching: *"Apollo appears to be blocked (trial or credits). Switching to Exa-based contact lookup — no Apollo credits will be used. Email hit rate will be lower."*
+
+After the fallback runs, present the hit rates at the review gate so the user can decide whether to source emails manually before activating.
 
 ### Step 3: Optional Clay enrichment
 
