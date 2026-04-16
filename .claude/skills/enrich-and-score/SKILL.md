@@ -19,25 +19,37 @@ Read:
 
 If `signals.csv` is absent, scoring still works — signal match just contributes 0 points per prospect. Not an error. The pipeline gracefully degrades for legacy clients and for campaigns where signal gathering was skipped.
 
+### Step 1.5: Disqualifier pre-filter (before any tool calls)
+
+Before calling Apollo, Clay, or any enrichment tool, run the DQ check:
+
+1. Read `icp.json.disqualifiers`.
+2. For each row in `prospects.csv`, check each disqualifier against the row's company name, domain, industry, employee count, and title. Flag rows where any disqualifier clearly matches.
+3. Mark flagged rows as `disqualified=true` in a working set. Do **not** enrich them.
+4. Tell the user: `"Removed N rows matching disqualifiers before enrichment: [list companies + reason]."` If 0, skip the message.
+
+This step costs nothing and prevents burning credits on prospects you'd disqualify anyway during scoring.
+
 ### Step 2: Enrich contacts
 
-For each person in the prospect list, use **Apollo people enrichment** (`apollo_people_match`) to get:
+For each **non-disqualified** person in the prospect list, use **Apollo people enrichment** (`apollo_people_match`) to get:
 - Email address
 - Phone number
 - LinkedIn URL (if not already present)
 - Current title (verified)
 - Company details
 
-**Important — Gate 2 of 2 (spend decision).** The preview half of the budget gate fired at the end of `/prospect`. This is where credits actually burn. Read the current row count from `prospects.csv` (not the count shown at preview time — the user may have trimmed rows in between).
+**Important — Gate 2 of 2 (spend decision).** The preview half of the budget gate fired at the end of `/prospect`. This is where credits actually burn. Read the current non-DQ row count from `prospects.csv` (not the count shown at preview time — the user may have trimmed rows or DQ'd rows in between).
 
 Present:
 
 ```
 Enrichment budget for <client-name>:
-  Rows in prospects.csv: <N>  (after user edits since /prospect preview)
+  Rows in prospects.csv: <total>  (after user edits since /prospect preview)
+  Disqualified (pre-filtered, not enriched): <dq>
+  Rows to enrich: <N>
   Apollo credits per row: 1
   Total credits: <N>
-  Also runs: /gather-signals upstream if signals.csv is absent or stale (no extra Apollo cost)
 
 Proceed with enrichment? (yes / no / subset <top-N>)
 ```

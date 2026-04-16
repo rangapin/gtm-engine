@@ -187,6 +187,7 @@ Before showing drafts to the user, re-read every email against `COPY_RULES.md`. 
 8. **Mobile test.** Would this fit on a phone screen without scrolling?
 9. **Aloud test.** Read it in your head as if it arrived from a stranger. Does any sentence exist only to scaffold the pitch? Delete it.
 10. **Angle alignment.** Does the email body actually express the chosen angle? A prospect tagged `cost_reduction` whose email talks about shipping velocity is mis-angled — either rewrite the body or change the angle tag, don't let them drift.
+11. **Angle field present.** Does the sequence file header include `**Angle:** <name> — <why>`? If it's missing, add it before delivering the draft. This field is required for downstream critique and outcome correlation.
 
 Fix violations before the review gate. If a rule conflicts with the client's voice (e.g., permission-ask feels weak for this founder), leave it and flag the tradeoff to the user — don't pretend the rule is absolute. Log which rules you applied vs bent in the drafting log.
 

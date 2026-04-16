@@ -26,6 +26,7 @@ The file system IS the state (per `CLAUDE.md` - "The skill contract"). Determine
 | + `brief.md` | research done |
 | + `icp.json` | ICP defined |
 | + `prospects.csv` (or `prospects.seed.csv`) | prospected |
+| + `signals.csv` | signals gathered |
 | + `prospects.enriched.csv` | enriched + scored |
 | + `sequences/*.md` | sequences drafted |
 | + `logs/activate.log.md` with non-placeholder content | activated |
@@ -113,7 +114,8 @@ After determining stage, recommend:
 | initialized | `/research-client <client>` |
 | research done | `/icp-define <client>` |
 | ICP defined | `/prospect <client>` |
-| prospected | `/enrich-and-score <client>` |
+| prospected | `/gather-signals <client>` |
+| signals gathered | `/enrich-and-score <client>` |
 | enriched + scored | `/draft-sequences <client>` |
 | sequences drafted | `/activate <client>` |
 | activated | `/capture-results <client>` |

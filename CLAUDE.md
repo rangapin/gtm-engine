@@ -34,7 +34,7 @@ The file system IS the state. No globals, no hidden context between skills.
 
 Not every step deserves a full review gate. The 7-gate sprawl the chain grew into is partly cargo-cult safety — review-everything theater that slows iteration without adding protection. Tier gates by stakes:
 
-- **Silent (auto-run, no gate):** `campaign-init`, `research-client`, `icp-define`. Cheap, reversible, no API spend, no external writes. Output lands in files the user can edit before the next step.
+- **Silent (no cost gate):** `campaign-init`, `research-client`, `icp-define`. No API spend, no external writes. `campaign-init` is fully automatic. `research-client` and `icp-define` present their output and may ask brief confirmation questions — but there is no credit-spend gate. Output lands in files the user can edit before the budget gate fires.
 - **Budget gate, two halves (preview + spend):**
   - **Half 1 — preview (end of `/prospect`):** User sees the actual top-10 rows from `prospects.csv`. No credits spent yet. User can edit `prospects.csv` to trim rows — this *is* the shortlist, no separate skill needed.
   - **Half 2 — spend (start of `/enrich-and-score`):** Gate reads the live row count (post-edit) and confirms the Apollo spend. Accepts `subset <N>` for partial enrichment.
@@ -43,7 +43,7 @@ Not every step deserves a full review gate. The 7-gate sprawl the chain grew int
 - **Quality gate (after `draft-sequences`):** the irreversible-copy-to-real-prospects gate. Full recap view: brief summary, ICP one-pager, prospect count + top-10 rows, 3 sample sequences inline. This is where the user actually reviews.
 - **Irreversible gate (before `activate`):** paused-first reminder, final go. No bulk activity before this.
 
-Silent doesn't mean blind — assumptions.md gives the user a 30-sec skim at any point, and if `research-client` or `icp-define` is clearly wrong the user stops the run before the budget gate.
+Silent doesn't mean blind — assumptions.md gives the user a 30-sec skim at any point, and if `research-client` or `icp-define` is clearly wrong the user stops the run before the budget gate. "No cost gate" also doesn't mean "no user interaction" — research and ICP definition benefit from a quick confirmation pass before continuing.
 
 ## Resuming a partial run
 
