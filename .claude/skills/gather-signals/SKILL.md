@@ -33,6 +33,14 @@ When prior flags exist, state them: "Prior runs flagged: X, Y, Z — I'll bias a
 - Past flag "LinkedIn scrapes always fail" → skip LinkedIn source unconditionally this run.
 - Past flag "g2 reviews too stale to matter" → tighten G2 recency window from 90 to 60 days.
 
+**Cross-client weak signal types.** In addition to the generic weakness extract, scan `clients/*/critique.md` for lines matching the exact prefix `Cross-client weak signal type:`. Extract the `<signal_type>` that follows from each match. Build `downweight_types = [<signal_type>, ...]`.
+
+Apply at collection time: when a signal whose `signal_type` is in `downweight_types` is detected, record it in `signals.csv` as usual (the audit trail stays complete), but drop its `confidence` by one tier: `high → med`, `med → low`, `low → low`. Append to its `notes` column: `downweighted: flagged in <k> prior critiques as weak signal type`.
+
+State at skill start when the list is non-empty: `Prior critiques flagged these signal types as underperforming: <list>. I'll downweight matching signals by one confidence tier this run.` Skip the announcement when the list is empty.
+
+Rationale: downweighting is reversible — a signal type might recover with better framing or against a different ICP. Retirement isn't. The skill collects and discounts; the human decides whether to retire the source rule from the source table.
+
 ### Step 3: Pre-flight budget gate
 
 Compute:
@@ -65,7 +73,7 @@ Use this source table as reference. For each unique `company_domain`, for each e
 | source_name | url_template | fetch_method | parse_rule | signal_types_detected | confidence_rule |
 |---|---|---|---|---|---|
 | `hiring_page` | `https://{domain}/careers`, fallback `https://{domain}/jobs` | WebFetch; follow 1 redirect | Count open roles. If ≥3 in target function (match against `icp.json` titles, case-insensitive), emit a `hiring_surge` signal. List top 3 role titles in `signal_text`. If an exec title (CEO/VP/Director/Head of) is open, also emit `leadership_change`. | `hiring_surge`, `leadership_change` | **high** if ≥5 roles OR exec title; **med** if 3-4 roles; **low** if 1-2 roles |
-| `press_release` | Try in order: `https://{domain}/press`, `/news`, `/blog/press`, `/company/news` | WebFetch each until one returns 200 | Find ISO or localized dates within last 180 days. Extract the H1/H2/article title nearest each date. Emit one signal per recent press item. | `press_mention`, `funding` (if text contains "raised"/"series"/"round"/"$M"), `partnership` (if text contains "partners"/"integration"/"joint") | **high** if ≤90 days; **med** if 91-180 days; **low** if older |
+| `press_release` | Try in order: `https://{domain}/press`, `/news`, `/blog/press`, `/company/news` | WebFetch each until one returns 200 | Find ISO or localized dates within last 90 days. Extract the H1/H2/article title nearest each date. Emit one signal per recent press item. **Event date vs. publication date:** after extracting the article's publication date, scan the article body for the actual event date (e.g. "announced in December", "since Q4 2025", "closed in January"). If an event date is found and it differs from the publication date by >21 days, use the event date as `detected_at` and append `"article pub: [pub_date]; event date from body: [event_date]"` to `notes`. The event date, not the article date, governs recency scoring. | `press_mention`, `funding` (if text contains "raised"/"series"/"round"/"$M"), `partnership` (if text contains "partners"/"integration"/"joint") | **high** if ≤30 days; **med** if 31-60 days; **low** if 61-90 days; discard if >90 days (see global recency gate below) |
 | `g2_review` | `https://www.g2.com/products/{slug}/reviews` — slug via `mcp__claude_ai_Exa__web_search_exa` query `"{company_name} g2 reviews"` | WebFetch primary; fallback `mcp__claude_ai_Exa__web_fetch_exa` on anti-bot | Parse review dates + star trend. Count reviews in last 90 days. | `community_signal` | **high** if ≥10 recent; **med** if 3-9; **low** if 1-2 |
 | `github_activity` | `https://api.github.com/orgs/{org}` — org inferred from domain (e.g., `molchanovs.com` → try `molchanovs`). If fails, try Exa search `"{company_name} github organization"`. | WebFetch with `Accept: application/json` | Check `/repos` most recent push. Check for tag releases in last 90 days via `/orgs/{org}/repos?sort=pushed&direction=desc`. | `product_launch` (if tagged release), `content_velocity` (if active commits but no release) | **high** if release ≤90 days; **med** if active commits ≤30 days with no release; **low** otherwise |
 | `product_hunt` | `https://www.producthunt.com/products/{slug}` — slug via Exa search `"{company_name} product hunt"` | WebFetch; fallback Exa | Parse launch date + rank/upvote count. | `product_launch`, `community_signal` | **high** if launch ≤90 days AND upvotes ≥500; **med** if launch ≤90 days; **low** if older |
@@ -81,13 +89,18 @@ Use this source table as reference. For each unique `company_domain`, for each e
 
 **Slug discovery via Exa:** If `mcp__claude_ai_Exa__web_search_exa` is unavailable (Exa MCP not connected), skip `g2_review`, `product_hunt`, `linkedin_company_page` for that run and note in the log: "Exa unavailable; skipped 3 sources."
 
-**Global decay rule:** After extracting, any candidate signal with `detected_at` > 180 days old is forced to `confidence=low` regardless of the source's confidence rule.
+**Global recency gate:** Applied after extracting, before deduplication. Uses the event date (`detected_at`) not the article/scrape date:
+- `detected_at` > 90 days → **discard entirely**, unless `signal_text` contains ongoing language ("through [year]", "multi-year", "continues", "ongoing", "partnership through"). These are forward-looking signals that remain actionable regardless of age.
+- `detected_at` > 60 days (but ≤ 90 days) → force `confidence=low` regardless of source rule.
+- `detected_at` ≤ 60 days → source's own confidence rule applies.
+
+The previous 180-day window emitted stale signals that made hooks sound like reporting last year's news. Hooks need recency to land.
 
 ### Step 5: Deduplicate
 
 Within each `company_domain`, merge duplicate signals:
-- Same `signal_type` + near-identical `signal_text` (case-insensitive, >80% text overlap) within 7 days of each other → keep the row with highest confidence (ties broken by earliest `detected_at`). Append the other source's `source_url` to `notes` as `"also seen on: <url>"`.
-- Rationale: GitHub + company blog both surfacing "released v2.0" = one signal with cross-source corroboration. Stronger, not double-counted.
+- Same `signal_type` + near-identical `signal_text` (case-insensitive, >70% text overlap) → keep the row with highest confidence (ties broken by earliest `detected_at`). Append the other source's `source_url` to `notes` as `"also seen on: <url>"`. **No time gap restriction** — a December event re-reported in April is still the same event and should collapse into one row.
+- Rationale: GitHub + company blog both surfacing "released v2.0" = one signal with cross-source corroboration. Stronger, not double-counted. The old 7-day window let journalist re-reports of old news look like fresh signals — removing the window closes that gap.
 
 ### Step 6: Write output
 

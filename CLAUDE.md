@@ -178,7 +178,7 @@ detected_at, confidence, notes
 **Consumers:**
 - `/enrich-and-score` reads this file for the "Signal match (0-30)" scoring tier: +10 per high, +5 per med, +2 per low, cap at 30. When absent, signal match = 0 (partial score, not error).
 - `/draft-sequences` will read this file as opener fuel (v2 — not yet implemented). Picks row 0 per company to populate `{{HOOK_SHORT}}` and `{{HOOK_EXPANDED}}`.
-- `/critique` may cite signal-to-reply correlations once `results.csv` + `signals.csv` co-exist for enough campaigns.
+- `/critique` reads this file alongside `results.csv` and computes per-signal-type reply rates (Finding 3), joining on `company_domain` with top-confidence-per-company attribution. Cross-client aggregates produce `Cross-client weak signal type:` flags that `/gather-signals` reads on its next run to downweight matching signals by one confidence tier.
 
 ### `sequences/` (output of `draft-sequences`)
 

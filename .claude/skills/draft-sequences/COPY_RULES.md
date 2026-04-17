@@ -194,6 +194,7 @@ The hardest tells to scrub aren't words — they're shape. LLMs default to unifo
 
 Read the email aloud.
 
+- **Remove the CTA and re-read.** If the body still delivers something useful to the prospect — a specific observation, a data point, a framing that helps them think — it passes. If the email collapses the moment the ask is gone, it's a pitch wearing friendly clothes. Rewrite the body to stand on its own, or cut the email. This test is falsifiable in a way "does it sound human?" isn't.
 - Does it sound like a LinkedIn post? Rewrite.
 - Does it sound like a press release? Rewrite.
 - Does any sentence exist only to scaffold the pitch (meta-commentary about the email itself, "thought you'd want a look at…")? Delete.

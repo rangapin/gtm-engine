@@ -90,7 +90,7 @@ For each prospect (or group of similar prospects), write the full sequence **aga
 - Subject lines lowercase, ≤5 words, prospect-specific not category-generic. Never fake `Re:`.
 - Plain text only — no HTML, no bullets, no bold. 5th-grade reading level.
 - Openers: timeline hook from the prospect's signal. Earn relevance in the first 7 words. No "I" as the first word.
-- CTA: ask permission, don't assume interest. One CTA per email. No calendar links in Email 1.
+- CTA: ask permission, don't assume interest. One CTA per email. No calendar links in Email 1. The body must stand on its own with the CTA removed — if it doesn't, it's a pitch, not a note.
 - Angle-shift every follow-up. Do not repeat Email 1's pitch.
 - Persona-calibrate: C-suite under 50 words + outcome-led; VPs connect strategy to mechanism; ICs/technical use operational language; finance wants numbers, no adjectives.
 - Sign-off: `<first_name>\n<role> @ <domain>`. Not a bare first name.
@@ -199,6 +199,7 @@ Before showing drafts to the user, re-read every email against `COPY_RULES.md`. 
 16. **Feature-dump check.** For each email, check every sentence: does it describe what the *product does*, or what the *prospect can do that they couldn't do before*? Any feature/capability listing must be rewritten as a prospect-facing outcome. ✗ "Our platform features AI analytics and real-time dashboards." ✓ "Know which deals are closing this quarter without interrogating your reps Friday afternoon."
 17. **Close-on-high-note check.** The last sentence of each email sets the memory the prospect replies from. It must leave them lighter, not pressured. Kill pressure-closers: "please let me know either way," "looking forward to your reply," "awaiting your response," "will you let me know?" Replace with a humble exit, a small useful nugget, or silence. A breakup that says "I'll survive if this isn't for you" outperforms one that says "last chance."
 18. **Timeline signal freshness.** For any opener that references a specific event (funding, hiring, launch, leadership change), confirm the event date is ≤60 days old. If it's older, either find a fresher signal or drop the time-anchored phrasing ("recently," "this week," "just," "after your") — reaching for a stale signal reads worse than no signal.
+19. **CTA-removal test.** Re-read each email with the CTA mentally deleted. If the remaining body still gives the prospect something of value — a specific observation, a data point, a useful framing — it passes. If the email collapses without the ask, it's a pitch wearing friendly clothes. Rewrite the body to stand on its own, or cut the email. This test is falsifiable in a way the "aloud test" (#9) isn't; run both.
 
 Fix violations before the review gate. If a rule conflicts with the client's voice (e.g., permission-ask feels weak for this founder), leave it and flag the tradeoff to the user — don't pretend the rule is absolute. Log which rules you applied vs bent in the drafting log.
 
